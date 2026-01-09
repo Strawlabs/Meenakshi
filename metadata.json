@@ -1,0 +1,8 @@
+{
+  "name": "Meenakshi v1 - Maa Madurai Vizha AI Host",
+  "description": "Meenakshi is a friendly, conversational AI host for the Maa Madurai Vizha festival. Experience the festival with real-time voice assistance, live updates, and location-guided information.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
