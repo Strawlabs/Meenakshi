@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meenakshi | Your AI Memory &amp; Financial Companion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#dbdad7",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-tertiary-fixed": "#00201d",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#6bd8cb",
+                        "surface": "#faf9f6",
+                        "on-primary": "#ffffff",
+                        "background": "#faf9f6",
+                        "tertiary": "#000000",
+                        "on-secondary-container": "#fffbff",
+                        "secondary-fixed": "#e9ddff",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed": "#89f5e7",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#faf9f6",
+                        "primary-container": "#131b2e",
+                        "on-primary-container": "#7c839b",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-primary-fixed": "#131b2e",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2f312f",
+                        "tertiary-container": "#00201d",
+                        "surface-container": "#efeeeb",
+                        "secondary-container": "#8455ef",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-tint": "#565e74",
+                        "surface-container-high": "#e9e8e5",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "on-tertiary-container": "#0c9488",
+                        "on-surface-variant": "#45464d",
+                        "inverse-primary": "#bec6e0",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-surface": "#1a1c1a",
+                        "secondary": "#6b38d4",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f4f3f1",
+                        "primary-fixed": "#dae2fd",
+                        "outline-variant": "#c6c6cd",
+                        "surface-variant": "#e3e2e0",
+                        "surface-container-highest": "#e3e2e0",
+                        "primary": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-secondary-fixed": "#23005c",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#1a1c1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "48px",
+                        "gutter": "16px",
+                        "container-padding-desktop": "40px",
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "stack-md": "24px",
+                        "container-padding-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(107, 56, 212, 0.05);
+        }
+
+        .ambient-glow {
+            filter: blur(60px);
+            background: radial-gradient(circle, rgba(132, 85, 239, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+        }
+
+        .ai-orb-float {
+            animation: orbFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+            50% { transform: translateY(-20px) scale(1.05); opacity: 1; }
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #000000 0%, #6b38d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        body {
+            background-color: #faf9f6;
+            color: #1a1c1a;
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="font-body-md overflow-x-hidden">
+<!-- Top Navigation Shell -->
+<header class="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl border-b border-white/20 h-16 flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop">
+<div class="flex items-center gap-2">
+<img alt="Meenakshi Logo" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLvt75b40d1GVzG0cyK87s5yWj57GR3r7Z-tWbBBzHvGuSr9sIz3rP29a7-5lusuDlfJHDw9JzEPHuS6tLVp77WEY9a50YEB1puUfcEjF0o1HEORm12o31IuTC8bbH-gvnjgprINaSsecwFCwECl35Nhs_FfFS33kWJZHvbEH0lAZBQNTFUsFW8ogp-6kPZfMXs4quxfMDehQad1C8cY2-3E1q3YGTcm0AHsAwkPOaWSaCp4lnKHaMwXReg"/>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-semibold tracking-tight text-primary">Meenakshi</span>
+</div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="font-label-sm text-label-sm text-primary hover:opacity-80 transition-opacity" href="#">Home</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:opacity-80 transition-opacity" href="#intelligence">Intelligence</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:opacity-80 transition-opacity" href="#memory">Memory</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:opacity-80 transition-opacity" href="#vault">Vault</a>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-sm text-label-sm hover:scale-[0.98] transition-all">Get Early Access</button>
+</nav>
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</header>
+<main class="pt-32 pb-40">
+<!-- Hero Section -->
+<section class="container mx-auto px-container-padding-mobile md:px-container-padding-desktop relative mb-stack-lg">
+<div class="absolute -top-40 left-1/2 -translate-x-1/2 w-full max-w-4xl h-full ambient-glow pointer-events-none z-0"></div>
+<div class="relative z-10 flex flex-col items-center text-center max-w-4xl mx-auto">
+<div class="mb-12 ai-orb-float">
+<img alt="Hero Logo" class="w-32 h-32 md:w-48 md:h-48 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/AP1WRLvt75b40d1GVzG0cyK87s5yWj57GR3r7Z-tWbBBzHvGuSr9sIz3rP29a7-5lusuDlfJHDw9JzEPHuS6tLVp77WEY9a50YEB1puUfcEjF0o1HEORm12o31IuTC8bbH-gvnjgprINaSsecwFCwECl35Nhs_FfFS33kWJZHvbEH0lAZBQNTFUsFW8ogp-6kPZfMXs4quxfMDehQad1C8cY2-3E1q3YGTcm0AHsAwkPOaWSaCp4lnKHaMwXReg"/>
+</div>
+<h1 class="font-display-lg text-display-lg mb-6 text-gradient leading-tight">
+                    Your AI Memory &amp; Financial Companion
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-12 max-w-2xl">
+                    Experience ambient intelligence that evolves with you. Meenakshi captures your life's narrative and masters your financial goals in one seamless, private OS.
+                </p>
+<div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+<button class="bg-secondary text-on-secondary px-10 py-4 rounded-full font-headline-lg-mobile text-label-sm hover:scale-[1.02] transition-transform shadow-lg shadow-secondary/20">
+                        Get Early Access
+                    </button>
+<button class="glass-card px-10 py-4 rounded-full font-headline-lg-mobile text-label-sm text-primary hover:bg-white transition-all">
+                        Watch the vision
+                    </button>
+</div>
+</div>
+</section>
+<!-- Conversational Intelligence (Bento) -->
+<section class="container mx-auto px-container-padding-mobile md:px-container-padding-desktop mb-40" id="intelligence">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+<div class="md:col-span-12 mb-8">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest block mb-4">Conversational</span>
+<h2 class="font-headline-lg text-headline-lg text-primary">Intelligence that speaks your language</h2>
+</div>
+<!-- Main Feature Card -->
+<div class="md:col-span-8 glass-card rounded-3xl p-10 flex flex-col justify-between min-h-[400px] overflow-hidden group">
+<div>
+<h3 class="font-headline-lg text-headline-lg mb-4">Contextual Dialogue</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md">Ask about your budget, recall a dinner from last year, or plan your next move. Meenakshi understands context, not just commands.</p>
+</div>
+<div class="mt-8 relative h-48">
+<div class="absolute inset-0 bg-gradient-to-t from-white to-transparent z-10"></div>
+<div class="space-y-4 opacity-60 group-hover:opacity-100 transition-opacity">
+<div class="flex justify-end">
+<div class="bg-secondary/10 text-secondary p-4 rounded-2xl rounded-tr-none max-w-xs font-body-md text-body-md">
+                                    "How much did I spend on coffee last month vs July?"
+                                </div>
+</div>
+<div class="flex justify-start">
+<div class="glass-card p-4 rounded-2xl rounded-tl-none max-w-sm font-body-md text-body-md">
+                                    "In July you spent $42. Last month it was $58—mostly due to those three visits to 'Blue Tokai' on the weekend."
+                                </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Feature Card -->
+<div class="md:col-span-4 bg-primary text-on-primary rounded-3xl p-10 flex flex-col justify-end relative overflow-hidden">
+<div class="absolute top-0 right-0 p-8 opacity-20">
+<span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'wght' 200">insights</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg mb-4">Predictive Budgeting</h3>
+<p class="font-body-md text-body-md text-on-primary/70">Autonomous analysis that flags potential overspending before it happens.</p>
+</div>
+</div>
+</section>
+<!-- Chronological Memory (Visual Grid) -->
+<section class="container mx-auto px-container-padding-mobile md:px-container-padding-desktop mb-40" id="memory">
+<div class="flex flex-col md:flex-row items-end justify-between mb-16 gap-8">
+<div class="max-w-xl">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest block mb-4">Chronicle</span>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-6">A timeline that never forgets</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Meenakshi acts as your second brain, logging interactions, transactions, and milestones into a beautiful, searchable chronological thread.</p>
+</div>
+<button class="flex items-center gap-2 text-secondary font-semibold hover:gap-4 transition-all">
+                    Explore the Archive <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+<div class="glass-card rounded-2xl overflow-hidden aspect-square flex flex-col p-6">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-auto">OCT 12</span>
+<span class="material-symbols-outlined text-secondary text-4xl mb-4">restaurant</span>
+<h4 class="font-body-md text-body-md font-bold">Family Dinner</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">La Piazza, New Delhi</p>
+</div>
+<div class="relative rounded-2xl overflow-hidden aspect-square">
+<img class="w-full h-full object-cover" data-alt="A cinematic, high-end photography of a modern digital office space with soft purple lighting and sleek furniture. The image captures a serene, intelligent atmosphere with large windows looking out onto a futuristic city skyline during dusk. The visual style is minimalist and sophisticated, perfectly aligned with a premium AI operating system aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeGbb67naxGQ2I0_Gfgy_LVKdaCeBWMTL34RgZ7icrtMj-b6SvIcAaybQaDs6c7ebABl1o6qOjFP4pHJP5RXdPZP3zV9hCzMmT7wFehcufpaXt_1iDCtCkstgLv6cth-yjTLEJRcYU_uY7uftVbPdds9akD5GD1wXGt1zP8yddY72sNl9dTX37RZEE-Cy0FNhHIEJqquHvCiVbRly1XHtn0lC2mPRKOqwPEq23mXKQEyHpJ2Aby-8qtFZde9QA68rCLHDxvpNFAu0"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end">
+<span class="font-label-sm text-label-sm text-white mb-1">OCT 14</span>
+<h4 class="font-body-md text-body-md font-bold text-white">Office Setup</h4>
+</div>
+</div>
+<div class="glass-card rounded-2xl overflow-hidden aspect-square flex flex-col p-6 border-secondary/20 bg-secondary/5">
+<span class="font-label-sm text-label-sm text-secondary mb-auto">TODAY</span>
+<span class="material-symbols-outlined text-secondary text-4xl mb-4">savings</span>
+<h4 class="font-body-md text-body-md font-bold">Goal Reached</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Emergency Fund: 100%</p>
+<div class="mt-4 h-1 w-full bg-secondary-fixed rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-full"></div>
+</div>
+</div>
+<div class="glass-card rounded-2xl overflow-hidden aspect-square flex flex-col p-6">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-auto">OCT 20</span>
+<span class="material-symbols-outlined text-secondary text-4xl mb-4">flight</span>
+<h4 class="font-body-md text-body-md font-bold">Flight to Zurich</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">LH761 • Gate A21</p>
+</div>
+</div>
+</section>
+<!-- Secure Document Vault -->
+<section class="container mx-auto px-container-padding-mobile md:px-container-padding-desktop" id="vault">
+<div class="glass-card rounded-[3rem] p-8 md:p-20 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
+
+</div>
+<div class="max-w-2xl relative z-10">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary font-bold uppercase tracking-widest">End-to-End Privacy</span>
+</div>
+<h2 class="font-display-lg text-display-lg mb-8 text-primary">The Vault: Your digital sanctum</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-12">
+                        Sensitive documents, passwords, and private notes are secured with biometric-locked local encryption. Meenakshi processes everything on-device, ensuring your data never leaves your control.
+                    </p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+<div class="flex gap-4 items-start">
+<span class="material-symbols-outlined text-secondary">fingerprint</span>
+<div>
+<h4 class="font-label-sm text-label-sm font-bold mb-1">Local Processing</h4>
+<p class="text-on-surface-variant text-sm">AI logic runs on your hardware, not our servers.</p>
+</div>
+</div>
+<div class="flex gap-4 items-start">
+<span class="material-symbols-outlined text-secondary">encrypted</span>
+<div>
+<h4 class="font-label-sm text-label-sm font-bold mb-1">Zero-Knowledge</h4>
+<p class="text-on-surface-variant text-sm">We can't see your data. Only you have the key.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low pt-24 pb-12 border-t border-white">
+<div class="container mx-auto px-container-padding-mobile md:px-container-padding-desktop">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+<div class="md:col-span-1">
+<div class="flex items-center gap-2 mb-6">
+<img alt="Footer Logo" class="w-6 h-6" src="https://lh3.googleusercontent.com/aida/AP1WRLvt75b40d1GVzG0cyK87s5yWj57GR3r7Z-tWbBBzHvGuSr9sIz3rP29a7-5lusuDlfJHDw9JzEPHuS6tLVp77WEY9a50YEB1puUfcEjF0o1HEORm12o31IuTC8bbH-gvnjgprINaSsecwFCwECl35Nhs_FfFS33kWJZHvbEH0lAZBQNTFUsFW8ogp-6kPZfMXs4quxfMDehQad1C8cY2-3E1q3YGTcm0AHsAwkPOaWSaCp4lnKHaMwXReg"/>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-primary">Meenakshi</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-6">The future of personal intelligence. Built for those who value time and privacy.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-on-surface-variant hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined text-lg">public</span></a>
+<a class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-on-surface-variant hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined text-lg">terminal</span></a>
+</div>
+</div>
+<div>
+<h4 class="font-label-sm text-label-sm font-bold mb-6 uppercase tracking-wider">Product</h4>
+<ul class="space-y-4 text-on-surface-variant text-sm">
+<li><a class="hover:text-primary transition-colors" href="#">OS Features</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Privacy Model</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Pricing</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Roadmap</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-sm text-label-sm font-bold mb-6 uppercase tracking-wider">Company</h4>
+<ul class="space-y-4 text-on-surface-variant text-sm">
+<li><a class="hover:text-primary transition-colors" href="#">About</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Careers</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Blog</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Contact</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-sm text-label-sm font-bold mb-6 uppercase tracking-wider">Join the Waitlist</h4>
+<div class="flex gap-2">
+<input class="bg-white border-none rounded-full px-6 py-2 text-sm focus:ring-2 focus:ring-secondary/50 w-full" placeholder="Email address" type="email"/>
+<button class="bg-primary text-on-primary p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-black/5 gap-4">
+<p class="text-on-surface-variant/60 text-xs">© 2024 Meenakshi Intelligence Corp. All rights reserved.</p>
+<div class="flex gap-8 text-on-surface-variant/60 text-xs">
+<a class="hover:text-primary" href="#">Privacy Policy</a>
+<a class="hover:text-primary" href="#">Terms of Service</a>
+</div>
+</div>
+</div>
+</footer>
+<!-- Bottom Nav Shell (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 h-20 bg-surface/80 backdrop-blur-2xl border-t border-white/30 rounded-t-xl shadow-lg">
+<a class="flex flex-col items-center justify-center text-secondary transition-all duration-300 scale-110 bg-secondary-container/20 rounded-full p-2" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined">history_edu</span>
+<span class="font-label-sm text-[10px]">Memory</span>
+</a>
+<a class="flex flex-col items-center justify-center" href="#">
+<div class="bg-primary text-white p-2 rounded-full">
+<span class="material-symbols-outlined">blur_on</span>
+</div>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-sm text-[10px]">Wealth</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-[10px]">Circles</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'scale(1.02)';
+                card.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

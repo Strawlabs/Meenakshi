@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meenakshi - Financial Timeline</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#dbdad7",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-tertiary-fixed": "#00201d",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#6bd8cb",
+                        "surface": "#faf9f6",
+                        "on-primary": "#ffffff",
+                        "background": "#faf9f6",
+                        "tertiary": "#000000",
+                        "on-secondary-container": "#fffbff",
+                        "secondary-fixed": "#e9ddff",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed": "#89f5e7",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#faf9f6",
+                        "primary-container": "#131b2e",
+                        "on-primary-container": "#7c839b",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-primary-fixed": "#131b2e",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2f312f",
+                        "tertiary-container": "#00201d",
+                        "surface-container": "#efeeeb",
+                        "secondary-container": "#8455ef",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-tint": "#565e74",
+                        "surface-container-high": "#e9e8e5",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "on-tertiary-container": "#0c9488",
+                        "on-surface-variant": "#45464d",
+                        "inverse-primary": "#bec6e0",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-surface": "#1a1c1a",
+                        "secondary": "#6b38d4",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f4f3f1",
+                        "primary-fixed": "#dae2fd",
+                        "outline-variant": "#c6c6cd",
+                        "surface-variant": "#e3e2e0",
+                        "surface-container-highest": "#e3e2e0",
+                        "primary": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-secondary-fixed": "#23005c",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#1a1c1a",
+                        "emerald-custom": "#50C878"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "48px",
+                        "gutter": "16px",
+                        "container-padding-desktop": "40px",
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "stack-md": "24px",
+                        "container-padding-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #faf9f6;
+            color: #1a1c1a;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .timeline-line {
+            background: linear-gradient(to bottom, #6b38d4, #50C878, #6b38d4);
+        }
+        .ai-orb-glow {
+            box-shadow: 0 0 40px rgba(107, 56, 212, 0.3);
+        }
+        .emerald-glow {
+            box-shadow: 0 0 20px rgba(80, 200, 120, 0.4);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        @keyframes breath {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        .animate-breath {
+            animation: breath 4s ease-in-out infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md min-h-screen">
+<!-- Top Navigation -->
+<nav class="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl border-b border-white/20 h-16 flex justify-between items-center px-container-padding-mobile">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[20px]">person</span>
+</div>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-semibold tracking-tight text-primary">Meenakshi</span>
+</div>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+</nav>
+<!-- Content Canvas -->
+<main class="pt-24 pb-32 px-container-padding-mobile max-w-2xl mx-auto relative">
+<!-- Timeline Hero -->
+<header class="mb-stack-lg text-center">
+<h1 class="font-display-lg text-display-lg mb-2 text-primary">Your Financial Story</h1>
+<p class="text-on-surface-variant font-body-lg">Every movement tells a chapter of your wealth.</p>
+</header>
+<!-- Vertical Timeline Path -->
+<div class="absolute left-1/2 -translate-x-1/2 top-48 bottom-32 w-0.5 timeline-line opacity-20 hidden md:block"></div>
+<!-- Timeline Container -->
+<div class="space-y-stack-md relative">
+<!-- Today Anchor -->
+<div class="flex justify-center mb-stack-md">
+<span class="bg-surface-container-high px-4 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant">Today, Oct 24</span>
+</div>
+<!-- Event 1: Salary -->
+<div class="relative group">
+<div class="glass-card rounded-xl p-6 transition-all duration-300 hover:scale-[1.02] emerald-glow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-emerald-custom/10 flex items-center justify-center text-emerald-custom">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-emerald-custom text-[18px]">Salary Credited</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">HDFC Bank • 09:15 AM</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-emerald-custom">+$12,400.00</span>
+</div>
+</div>
+<p class="text-on-surface-variant mb-6 font-body-md">Your monthly fuel has arrived. This is 5% higher than last month's payout.</p>
+<button class="w-full py-3 px-4 rounded-lg bg-secondary/5 text-secondary border border-secondary/10 flex items-center justify-center gap-2 font-label-sm text-label-sm hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        Ask Meenakshi
+                    </button>
+</div>
+</div>
+<!-- Event 2: Credit Card Bill -->
+<div class="relative group">
+<div class="glass-card rounded-xl p-6 transition-all duration-300 hover:scale-[1.02]">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-on-surface-variant/5 flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">credit_card</span>
+</div>
+<div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary text-[18px]">Credit Card Bill</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Amex Platinum • Due in 3 days</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary">-$1,245.50</span>
+</div>
+</div>
+<p class="text-on-surface-variant mb-6 font-body-md">A gentle reminder of your luxury dining spree last weekend. Pay early to boost your score.</p>
+<button class="w-full py-3 px-4 rounded-lg bg-secondary/5 text-secondary border border-secondary/10 flex items-center justify-center gap-2 font-label-sm text-label-sm hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        Ask Meenakshi
+                    </button>
+</div>
+</div>
+<!-- Date Split -->
+<div class="flex justify-center py-stack-md">
+<span class="bg-surface-container-high px-4 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant">Oct 21</span>
+</div>
+<!-- Event 3: Insurance Renewal -->
+<div class="relative group">
+<div class="glass-card rounded-xl p-6 transition-all duration-300 hover:scale-[1.02]">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary/5 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary text-[18px]">Insurance Renewal</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Life Protect Plus • Annual</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary">-$450.00</span>
+</div>
+</div>
+<p class="text-on-surface-variant mb-6 font-body-md">Peace of mind renewed. Your annual premium has been debited automatically.</p>
+<button class="w-full py-3 px-4 rounded-lg bg-secondary/5 text-secondary border border-secondary/10 flex items-center justify-center gap-2 font-label-sm text-label-sm hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        Ask Meenakshi
+                    </button>
+</div>
+</div>
+<!-- Narrative Insight Card -->
+<div class="bg-primary-container rounded-xl p-8 text-on-primary-container relative overflow-hidden">
+<div class="relative z-10">
+<span class="font-label-sm text-label-sm text-on-primary-container/60 mb-2 block uppercase tracking-widest">Monthly Pulse</span>
+<h2 class="font-headline-lg text-headline-lg text-white mb-4">You're doing great, Alex.</h2>
+<p class="font-body-md text-on-primary-container leading-relaxed">Your net worth grew by 2.4% this week. With the salary credit, you have enough to max out your SIP for the month.</p>
+<div class="mt-6 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+<span class="bg-white/10 px-4 py-2 rounded-full font-label-sm text-label-sm text-white shrink-0">Invest $2,000</span>
+<span class="bg-white/10 px-4 py-2 rounded-full font-label-sm text-label-sm text-white shrink-0">Debt Analysis</span>
+</div>
+</div>
+<!-- Abstract BG Glow -->
+<div class="absolute -top-12 -right-12 w-48 h-48 bg-secondary blur-[80px] opacity-20"></div>
+</div>
+</div>
+</main>
+<!-- AI Orb Interaction Area -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+<div class="w-16 h-16 rounded-full bg-gradient-to-br from-secondary to-secondary-container ai-orb-glow animate-breath pointer-events-auto cursor-pointer flex items-center justify-center border-4 border-white">
+<span class="material-symbols-outlined text-white text-[32px]" style="font-variation-settings: 'FILL' 1;">blur_on</span>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 h-20 bg-surface/80 backdrop-blur-2xl border-t border-white/30 rounded-t-xl">
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-all">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary scale-110 bg-secondary-container/20 rounded-full p-2 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history_edu</span>
+<span class="font-label-sm text-label-sm mt-1">Memory</span>
+</button>
+<div class="w-12 h-12"></div> <!-- Spacer for Orb -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-all">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-sm text-label-sm mt-1">Wealth</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-all">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Circles</span>
+</button>
+</nav>
+<script>
+        // Simple micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('touchstart', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+
+        // AI Orb click simulation
+        const orb = document.querySelector('.ai-orb-glow');
+        orb.addEventListener('click', () => {
+            orb.style.animation = 'none';
+            orb.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                orb.style.transform = 'scale(1.1)';
+                orb.style.animation = 'breath 2s ease-in-out infinite';
+                alert('Meenakshi is listening...');
+            }, 200);
+        });
+    </script>
+</body></html>

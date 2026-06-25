@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Welcome to Meenakshi | Your Intelligent Second Brain</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#faf9f6",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#efeeeb",
+                        "tertiary-container": "#00201d",
+                        "on-primary-container": "#7c839b",
+                        "surface": "#faf9f6",
+                        "surface-variant": "#e3e2e0",
+                        "on-surface-variant": "#45464d",
+                        "surface-container-highest": "#e3e2e0",
+                        "primary-fixed": "#dae2fd",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#1a1c1a",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-secondary-fixed": "#23005c",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1a1c1a",
+                        "on-error": "#ffffff",
+                        "primary-container": "#131b2e",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-dim": "#dbdad7",
+                        "tertiary-fixed": "#89f5e7",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "inverse-surface": "#2f312f",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-fixed": "#00201d",
+                        "secondary-container": "#8455ef",
+                        "surface-tint": "#565e74",
+                        "surface-container-high": "#e9e8e5",
+                        "tertiary-fixed-dim": "#6bd8cb",
+                        "primary": "#000000",
+                        "error-container": "#ffdad6",
+                        "secondary": "#6b38d4",
+                        "background": "#faf9f6",
+                        "outline-variant": "#c6c6cd",
+                        "surface-container-low": "#f4f3f1",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#0c9488",
+                        "on-primary-fixed": "#131b2e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-mobile": "20px",
+                        "container-padding-desktop": "40px",
+                        "stack-lg": "48px",
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "stack-md": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #faf9f6;
+            overflow-x: hidden;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .ai-orb-glow {
+            filter: blur(60px);
+            background: linear-gradient(135deg, #6b38d4 0%, #d0bcff 100%);
+            animation: pulse-glow 8s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(1); opacity: 0.4; }
+            100% { transform: scale(1.3); opacity: 0.7; }
+        }
+
+        .breath {
+            animation: breathe 4s infinite ease-in-out;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .floating-icon {
+            animation: float 6s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .delay-1 { animation-delay: 1s; }
+        .delay-2 { animation-delay: 2s; }
+        .delay-3 { animation-delay: 3s; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-bright text-on-surface antialiased">
+<!-- Top Navigation Bar (Branding only for onboarding) -->
+<header class="fixed top-0 w-full z-50 flex justify-center items-center h-16 px-container-padding-mobile">
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-semibold tracking-tight text-primary">Meenakshi</div>
+</header>
+<main class="relative min-h-screen flex flex-col items-center justify-center px-container-padding-mobile pt-20 pb-12">
+<!-- Background Ambient Glow -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] ai-orb-glow rounded-full z-0 pointer-events-none"></div>
+<!-- Hero Section -->
+<div class="relative z-10 w-full max-w-lg flex flex-col items-center text-center space-y-stack-md">
+<!-- Central Illustration -->
+<div class="relative w-full aspect-square max-h-[340px] flex items-center justify-center mb-base">
+<!-- AI Center Orb -->
+<div class="w-32 h-32 rounded-full bg-gradient-to-br from-secondary to-secondary-fixed shadow-[0_0_40px_rgba(107,56,212,0.4)] flex items-center justify-center breath z-20">
+<span class="material-symbols-outlined text-on-secondary text-5xl" style="font-variation-settings: 'FILL' 1;">blur_on</span>
+</div>
+<!-- Connectivity Lines (SVG) -->
+<svg class="absolute inset-0 w-full h-full z-10 opacity-30" viewbox="0 0 400 400">
+<circle cx="200" cy="200" fill="none" r="120" stroke="#6b38d4" stroke-dasharray="4 4" stroke-width="1"></circle>
+<line stroke="#6b38d4" stroke-width="1" x1="200" x2="100" y1="200" y2="100"></line>
+<line stroke="#6b38d4" stroke-width="1" x1="200" x2="300" y1="200" y2="100"></line>
+<line stroke="#6b38d4" stroke-width="1" x1="200" x2="100" y1="200" y2="300"></line>
+<line stroke="#6b38d4" stroke-width="1" x1="200" x2="300" y1="200" y2="300"></line>
+</svg>
+<!-- Floating Data Points -->
+<!-- Gmail -->
+<div class="absolute top-[15%] left-[15%] glass-card p-4 rounded-xl floating-icon delay-1 shadow-sm flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">mail</span>
+<span class="font-label-sm text-label-sm mt-1 text-on-surface-variant">Gmail</span>
+</div>
+<!-- Calendar -->
+<div class="absolute top-[15%] right-[15%] glass-card p-4 rounded-xl floating-icon delay-2 shadow-sm flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-sm text-label-sm mt-1 text-on-surface-variant">Events</span>
+</div>
+<!-- Documents -->
+<div class="absolute bottom-[15%] left-[15%] glass-card p-4 rounded-xl floating-icon delay-3 shadow-sm flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-label-sm text-label-sm mt-1 text-on-surface-variant">Docs</span>
+</div>
+<!-- Financial -->
+<div class="absolute bottom-[15%] right-[15%] glass-card p-4 rounded-xl floating-icon shadow-sm flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-label-sm text-label-sm mt-1 text-on-surface-variant">Wealth</span>
+</div>
+</div>
+<div class="space-y-stack-sm">
+<h1 class="font-display-lg text-display-lg text-primary">Meenakshi remembers your life.</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant px-4">
+                    Your personal second brain that seamlessly connects your Gmail, business cards, documents, and financial data into one intelligent ecosystem.
+                </p>
+</div>
+<!-- Bento Features (Micro Cards) -->
+<div class="grid grid-cols-2 gap-4 w-full mt-stack-md">
+<div class="glass-card p-5 rounded-2xl text-left transition-all hover:scale-[1.02] cursor-default">
+<div class="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-secondary text-[20px]">insights</span>
+</div>
+<h3 class="font-label-sm text-label-sm text-primary mb-1">Financial Intelligence</h3>
+<p class="text-[13px] text-on-surface-variant leading-relaxed">Tracks every rupee, predicting goals before you set them.</p>
+</div>
+<div class="glass-card p-5 rounded-2xl text-left transition-all hover:scale-[1.02] cursor-default">
+<div class="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-secondary text-[20px]">history_edu</span>
+</div>
+<h3 class="font-label-sm text-label-sm text-primary mb-1">Contextual Memory</h3>
+<p class="text-[13px] text-on-surface-variant leading-relaxed">Retrieves information from years ago, instantly.</p>
+</div>
+</div>
+<!-- Action Button -->
+<div class="w-full pt-stack-md">
+<button class="w-full h-16 rounded-full bg-primary text-on-primary font-headline-lg-mobile text-headline-lg-mobile flex items-center justify-center gap-3 active:scale-95 transition-all duration-300 shadow-xl group" onclick="handleStart()">
+                    Get Started
+                    <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant/60 uppercase tracking-widest">Secure &amp; End-to-End Encrypted</p>
+</div>
+</div>
+</main>
+<!-- Footer Decoration -->
+<footer class="fixed bottom-0 left-0 w-full p-8 flex justify-center opacity-30 pointer-events-none">
+<div class="flex gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/20"></div>
+</div>
+</footer>
+<script>
+        function handleStart() {
+            // Visual feedback
+            const btn = event.currentTarget;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span>';
+            
+            setTimeout(() => {
+                // Transition to next state logic
+                alert("Initializing Intelligence Hub...");
+                btn.innerHTML = 'Get Started <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>';
+            }, 1200);
+        }
+
+        // Atmosphere: subtle parallax on the glass cards
+        document.addEventListener('mousemove', (e) => {
+            const cards = document.querySelectorAll('.glass-card');
+            const x = (window.innerWidth / 2 - e.pageX) / 50;
+            const y = (window.innerHeight / 2 - e.pageY) / 50;
+
+            cards.forEach(card => {
+                card.style.transform = `translateX(${x}px) translateY(${y}px)`;
+            });
+        });
+    </script>
+</body></html>

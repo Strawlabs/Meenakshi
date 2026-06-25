@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meenakshi AI - Intelligence Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#faf9f6",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#efeeeb",
+                        "tertiary-container": "#00201d",
+                        "on-primary-container": "#7c839b",
+                        "surface": "#faf9f6",
+                        "surface-variant": "#e3e2e0",
+                        "on-surface-variant": "#45464d",
+                        "surface-container-highest": "#e3e2e0",
+                        "primary-fixed": "#dae2fd",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#1a1c1a",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-secondary-fixed": "#23005c",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1a1c1a",
+                        "on-error": "#ffffff",
+                        "primary-container": "#131b2e",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-dim": "#dbdad7",
+                        "tertiary-fixed": "#89f5e7",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "inverse-surface": "#2f312f",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-fixed": "#00201d",
+                        "secondary-container": "#8455ef",
+                        "surface-tint": "#565e74",
+                        "surface-container-high": "#e9e8e5",
+                        "tertiary-fixed-dim": "#6bd8cb",
+                        "primary": "#000000",
+                        "error-container": "#ffdad6",
+                        "secondary": "#6b38d4",
+                        "background": "#faf9f6",
+                        "outline-variant": "#c6c6cd",
+                        "surface-container-low": "#f4f3f1",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#0c9488",
+                        "on-primary-fixed": "#131b2e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-mobile": "20px",
+                        "container-padding-desktop": "40px",
+                        "stack-lg": "48px",
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "stack-md": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #faf9f6;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .ai-orb-glow {
+            box-shadow: 0 0 40px rgba(107, 56, 212, 0.3);
+            background: linear-gradient(135deg, #6b38d4 0%, #8455ef 100%);
+        }
+        @keyframes breath {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        .animate-breath {
+            animation: breath 4s ease-in-out infinite;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-bright text-on-surface selection:bg-secondary-fixed">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl border-b border-white/20 flex justify-between items-center px-container-padding-mobile h-16">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-semibold tracking-tight text-primary">Meenakshi</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<main class="pt-24 pb-32 px-container-padding-mobile max-w-2xl mx-auto min-h-screen relative overflow-hidden">
+<!-- Animated Background Ornament -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-secondary/10 rounded-full blur-[80px] pointer-events-none"></div>
+<div class="absolute top-1/2 -left-32 w-80 h-80 bg-primary-fixed-dim/20 rounded-full blur-[100px] pointer-events-none"></div>
+<!-- Hero Section -->
+<section class="mb-stack-lg animate-fade-in">
+<h2 class="font-display-lg text-[40px] text-on-surface mb-2 leading-tight">Good Morning, Prabhu.</h2>
+<p class="font-body-lg text-on-surface-variant opacity-80">I’ve prepared today’s briefing for you.</p>
+</section>
+<!-- Daily AI Briefing Cards (Narrative Style) -->
+<section class="space-y-gutter mb-stack-lg">
+<div class="glass-card rounded-xl p-6 shadow-sm border border-white/50 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+<div class="flex items-start gap-4">
+<div class="p-2 rounded-lg bg-error-container text-on-error-container">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+</div>
+<div>
+<h3 class="font-headline-lg-mobile text-[18px] mb-1">Upcoming Payment</h3>
+<p class="font-body-md text-on-surface-variant">Credit card payment due in 4 days. Would you like me to schedule a transfer from your secondary account?</p>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="px-4 py-2 bg-secondary text-on-secondary rounded-full text-label-sm font-label-sm hover:opacity-90 transition-all">Schedule Now</button>
+<button class="px-4 py-2 bg-surface-container-high text-on-surface rounded-full text-label-sm font-label-sm hover:bg-surface-container-highest transition-all">Remind Me</button>
+</div>
+</div>
+<div class="glass-card rounded-xl p-6 shadow-sm border border-white/50 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+<div class="flex items-start gap-4">
+<div class="p-2 rounded-lg bg-primary-fixed text-on-primary-fixed">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</div>
+<div>
+<h3 class="font-headline-lg-mobile text-[18px] mb-1">Follow-up Pending</h3>
+<p class="font-body-md text-on-surface-variant">Rajesh from HDFC followed up yesterday regarding the home loan documentation. I've drafted a reply for your review.</p>
+</div>
+</div>
+<div class="mt-4">
+<button class="px-4 py-2 border border-outline-variant text-on-surface-variant rounded-full text-label-sm font-label-sm hover:bg-surface-container-low transition-all">Review Draft</button>
+</div>
+</div>
+</section>
+<!-- AI Prompts / Conversation Starters -->
+<section class="mb-stack-lg">
+<h4 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mb-4">Suggested Inquiries</h4>
+<div class="flex flex-col gap-3">
+<button class="flex items-center justify-between p-4 glass-card rounded-xl text-left hover:bg-white transition-colors group">
+<span class="font-body-md text-on-surface">What do I need to know today?</span>
+<span class="material-symbols-outlined text-secondary opacity-0 group-hover:opacity-100 transition-opacity" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="flex items-center justify-between p-4 glass-card rounded-xl text-left hover:bg-white transition-colors group">
+<span class="font-body-md text-on-surface">Explain my recent financial activity</span>
+<span class="material-symbols-outlined text-secondary opacity-0 group-hover:opacity-100 transition-opacity" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</section>
+<!-- Quick Actions -->
+<section class="mb-stack-lg">
+<h4 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mb-4">Tools</h4>
+<div class="grid grid-cols-2 gap-4">
+<div class="glass-card p-5 rounded-2xl flex flex-col gap-3 items-start group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="contactless">contactless</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface">Scan Card</span>
+</div>
+<div class="glass-card p-5 rounded-2xl flex flex-col gap-3 items-start group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="upload_file">upload_file</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface">Upload Document</span>
+</div>
+</div>
+</section>
+<!-- Informational Space/Visual -->
+<section class="mt-8 rounded-3xl overflow-hidden aspect-video relative">
+<img alt="Abstract Fluid Background" class="w-full h-full object-cover" data-alt="A macro photograph of fluid, iridescent oils swirling in water, creating a mesmerizing pattern of lavender, deep violet, and shimmering silver. The lighting is soft and ethereal, capturing subtle highlights on the fluid peaks. The overall aesthetic is one of calm, high-tech sophistication, perfectly aligning with a premium light-mode AI interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdWyLsMRD8q_2VJBDj4nLfLwTEql4Jiakd7G_kRk7yNa-CaYJKxJFo6ItvpnCd0RgNbSetJ1MFNPay3VRdvzMit5-Lo66z-NbtPNIyYXtd_Z0Y6qFDWyfmOvZprlUWrwNlDCu_kIKGCx-fH7I1ZnREJZdYMLmqbdXyCj0LGr2fljq5aoY9KQsCrSrEChrhWTxK1lXrDO8eK0phBd7PH6iCGy1hgk_4zELls3V19UyeVKmmtBr_bgN4stIgi1rfBoy2ttRoU6Y_0xE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary-container/40 to-transparent flex items-end p-6">
+<p class="text-white font-body-md">Intelligence is invisible, yet ever-present.</p>
+</div>
+</section>
+</main>
+<!-- Persistent Floating AI Orb -->
+<div class="fixed bottom-28 right-6 z-[60]">
+<button class="ai-orb-glow w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl animate-breath group hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="blur_on" style="font-variation-settings: 'FILL' 1;">blur_on</span>
+<div class="absolute -top-12 right-0 bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg text-label-sm font-label-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-md">
+                Talk to Meenakshi
+            </div>
+</button>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-2xl border-t border-white/30 flex justify-around items-center px-4 pb-6 pt-2 h-20 rounded-t-xl shadow-lg">
+<a class="flex flex-col items-center justify-center text-secondary transition-all duration-300 scale-110 bg-secondary-container/20 rounded-full p-2" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-[10px] mt-0.5">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary" href="#">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<span class="font-label-sm text-[10px] mt-0.5">Memory</span>
+</a>
+<div class="w-12"></div> <!-- Spacer for Orb if needed, but here used for center balance -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-sm text-[10px] mt-0.5">Wealth</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-sm text-[10px] mt-0.5">Circles</span>
+</a>
+</nav>
+<script>
+        // Simple Interaction logic
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1.01)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+
+        // AI Orb Speech recognition simulation
+        const aiOrb = document.querySelector('.ai-orb-glow');
+        aiOrb.addEventListener('click', () => {
+            const btn = aiOrb;
+            btn.classList.remove('animate-breath');
+            btn.style.animation = 'none';
+            btn.style.boxShadow = '0 0 60px rgba(132, 85, 239, 0.8)';
+            
+            // Pulse fast
+            let count = 0;
+            const pulseInterval = setInterval(() => {
+                btn.style.transform = count % 2 === 0 ? 'scale(1.15)' : 'scale(1.05)';
+                count++;
+                if(count > 10) {
+                    clearInterval(pulseInterval);
+                    btn.classList.add('animate-breath');
+                    btn.style.boxShadow = '';
+                }
+            }, 200);
+        });
+    </script>
+</body></html>
