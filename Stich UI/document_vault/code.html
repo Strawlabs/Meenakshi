@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meenakshi | Financial Document Vault</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Manrope -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#dbdad7",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "on-tertiary-fixed": "#00201d",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#6bd8cb",
+                    "surface": "#faf9f6",
+                    "on-primary": "#ffffff",
+                    "background": "#faf9f6",
+                    "tertiary": "#000000",
+                    "on-secondary-container": "#fffbff",
+                    "secondary-fixed": "#e9ddff",
+                    "primary-fixed-dim": "#bec6e0",
+                    "tertiary-fixed": "#89f5e7",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#faf9f6",
+                    "primary-container": "#131b2e",
+                    "on-primary-container": "#7c839b",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-primary-fixed": "#131b2e",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2f312f",
+                    "tertiary-container": "#00201d",
+                    "surface-container": "#efeeeb",
+                    "secondary-container": "#8455ef",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "surface-tint": "#565e74",
+                    "surface-container-high": "#e9e8e5",
+                    "on-tertiary-fixed-variant": "#005049",
+                    "on-tertiary-container": "#0c9488",
+                    "on-surface-variant": "#45464d",
+                    "inverse-primary": "#bec6e0",
+                    "inverse-on-surface": "#f2f1ee",
+                    "on-surface": "#1a1c1a",
+                    "secondary": "#6b38d4",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-low": "#f4f3f1",
+                    "primary-fixed": "#dae2fd",
+                    "outline-variant": "#c6c6cd",
+                    "surface-variant": "#e3e2e0",
+                    "surface-container-highest": "#e3e2e0",
+                    "primary": "#000000",
+                    "surface-container-lowest": "#ffffff",
+                    "outline": "#76777d",
+                    "on-secondary-fixed": "#23005c",
+                    "on-secondary": "#ffffff",
+                    "on-background": "#1a1c1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-lg": "48px",
+                    "gutter": "16px",
+                    "container-padding-desktop": "40px",
+                    "base": "8px",
+                    "stack-sm": "8px",
+                    "stack-md": "24px",
+                    "container-padding-mobile": "20px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "display-lg": ["Manrope"],
+                    "body-md": ["Manrope"],
+                    "headline-lg": ["Manrope"],
+                    "body-lg": ["Manrope"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease-out;
+        }
+        .glass-card:hover {
+            transform: scale(1.02);
+        }
+        .ai-glow {
+            box-shadow: 0 0 40px -10px rgba(107, 56, 212, 0.2);
+        }
+        .breathing-orb {
+            animation: breathe 4s ease-in-out infinite;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.8; filter: blur(8px); }
+            50% { transform: scale(1.15); opacity: 1; filter: blur(12px); }
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface selection:bg-secondary-fixed min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl border-b border-white/20 flex justify-between items-center px-container-padding-mobile h-16">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="User profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0OLLRaJao84Lqlsh0lu-K_B1LYtk-gCPKpEUwqwCgk_jKVxA_PHkZKaYLO0c_Ob0RjCa_ppyoZy6oPmVla5K19OCiBNH5XtFzFrb6a0BCfEYZbhg8CkLCtP9d63ICU-syEkKbcPk4XSpwU8SXPwgd1vHPCPbDfNgowM4-pRY55eWa6PfsnMufu2Q5KCkBCGBSbpB3wvX5otzlzzU-XpZtCXyZ4N0sqCppEYPQQuHmrdp5Poi8sT3bmSQWaP3iBsj_15aOCQin7dg"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-semibold tracking-tight text-primary">Meenakshi</h1>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-primary hover:opacity-80 transition-opacity active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<main class="pt-24 px-container-padding-mobile max-w-7xl mx-auto">
+<!-- Header Section -->
+<section class="mb-stack-lg">
+<div class="flex flex-col gap-2">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Ambient Intelligence Hub</span>
+<h2 class="font-display-lg text-display-lg text-primary">Document Vault</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+                    Your financial narrative, interpreted and secured. I've analyzed your latest reports to highlight what truly matters.
+                </p>
+</div>
+</section>
+<!-- Bento Grid Vault -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-stack-lg">
+<!-- Document Card: Credit Report -->
+<div class="glass-card ai-glow rounded-xl p-6 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-secondary-fixed rounded-lg text-secondary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">insights</span>
+</div>
+<span class="font-label-sm text-label-sm bg-surface-container-high px-2 py-1 rounded">Updated 2h ago</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2">Annual Credit Report</h3>
+<div class="flex items-center gap-2 mb-4">
+<div class="h-1 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[85%] rounded-full"></div>
+</div>
+<span class="font-label-sm text-label-sm text-secondary">782</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant italic border-l-2 border-secondary-fixed pl-4 mb-6">
+                        "Your score increased by 12 points. This improvement is primarily due to the consistent on-time payments of your mortgage over the last 12 months."
+                    </p>
+</div>
+<button class="w-full py-3 px-4 bg-secondary text-on-secondary rounded-lg font-label-sm text-label-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-[18px]">blur_on</span>
+                    Ask Meenakshi about this
+                </button>
+</div>
+<!-- Document Card: Bank Statement -->
+<div class="glass-card rounded-xl p-6 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-tertiary-fixed rounded-lg text-on-tertiary-container">
+<span class="material-symbols-outlined">account_balance</span>
+</div>
+<span class="font-label-sm text-label-sm bg-surface-container-high px-2 py-1 rounded">September 2023</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2">Main Savings Account</h3>
+<p class="font-body-md text-body-md text-on-surface-variant italic border-l-2 border-tertiary-fixed pl-4 mb-6">
+                        "Unusually high activity in 'Subscription Services' this month. You spent $45 more than your average on recurring digital platforms."
+                    </p>
+</div>
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-[18px]">blur_on</span>
+                    Ask Meenakshi about this
+                </button>
+</div>
+<!-- Document Card: Loan Agreement -->
+<div class="glass-card rounded-xl p-6 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-primary-fixed rounded-lg text-primary">
+<span class="material-symbols-outlined">contract</span>
+</div>
+<span class="font-label-sm text-label-sm bg-surface-container-high px-2 py-1 rounded">Permanent</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2">Auto Loan Agreement</h3>
+<p class="font-body-md text-body-md text-on-surface-variant italic border-l-2 border-primary-fixed pl-4 mb-6">
+                        "The variable interest rate clause triggers in 3 months. Based on current trends, your monthly payment might increase by approx. $22."
+                    </p>
+</div>
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-[18px]">blur_on</span>
+                    Ask Meenakshi about this
+                </button>
+</div>
+<!-- Secondary Documents Row -->
+<div class="lg:col-span-2 glass-card rounded-xl p-6 flex flex-col md:flex-row gap-6 items-center">
+<div class="w-full md:w-1/3">
+<img class="w-full h-40 object-cover rounded-lg shadow-inner" data-alt="A professional top-down photograph of organized financial documents on a clean minimalist desk. The scene is illuminated with soft natural light, featuring high-end stationery and a subtle purple glass paperweight reflecting the brand's identity. The overall aesthetic is one of intelligence, serenity, and professional financial management in a bright, modern office space." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTncLu5tHRpaZmM2vqtvZ8EJPaF0Vq5hO55lgNhJpX5zoYOv4jhZ6S6L-J9gxKMJJbWFNgTDOFyuLUW9WnDWokzhXMBMRep4ydp20_EQb9YA8NkufLnYU31Ke8HnXoh-MoYbx3qt-aYO_YZxe9D3sK8Mz06Mi3TJ7TbLwp9VcMFkKmErEQplO06Pwr1bYSqET7F1BxYWfH_ywryVBGei7UuMVExtT2beA5fmCcul4H4pnpMEbMXm9sk1BOoEuCtgAgGWj5fZEbzsE"/>
+</div>
+<div class="w-full md:w-2/3">
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2">Tax Portfolio 2023</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">
+                        Comprehensive summary of your charitable contributions and deductible business expenses. Ready for submission.
+                    </p>
+<div class="flex gap-3">
+<button class="px-6 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-label-sm text-label-sm hover:opacity-90 transition-all">Download PDF</button>
+<button class="p-2 border border-outline-variant rounded-lg flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</div>
+</div>
+<!-- AI Insight Mini Card -->
+<div class="glass-card rounded-xl p-6 bg-secondary/5 border-secondary-fixed/30 flex flex-col justify-center text-center">
+<div class="relative mx-auto mb-4">
+<div class="w-16 h-16 rounded-full bg-gradient-to-tr from-secondary to-secondary-fixed-dim breathing-orb"></div>
+<div class="absolute inset-0 flex items-center justify-center text-on-secondary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+</div>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-1">New Insight</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">I've spotted a discrepancy in your utility bill vs the contract terms.</p>
+<button class="font-label-sm text-label-sm text-secondary font-bold">Investigate Now →</button>
+</div>
+</div>
+<!-- Quick Actions / Smart Chips -->
+<div class="flex flex-wrap gap-3 mb-stack-lg">
+<button class="bg-secondary-fixed text-on-secondary-fixed px-5 py-3 rounded-full flex items-center gap-2 font-label-sm text-label-sm hover:translate-y-[-2px] transition-all">
+<span class="material-symbols-outlined text-[20px]">upload_file</span>
+                Securely Upload Document
+            </button>
+<button class="bg-surface-container-high text-on-surface-variant px-5 py-3 rounded-full flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                Category: All
+            </button>
+<button class="bg-surface-container-high text-on-surface-variant px-5 py-3 rounded-full flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-[20px]">calendar_today</span>
+                Date: 2023
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-2xl border-t border-white/30 flex justify-around items-center px-4 pb-6 pt-2 h-20 rounded-t-xl shadow-lg">
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60">
+<span class="material-symbols-outlined">history_edu</span>
+<span class="font-label-sm text-label-sm mt-1">Memory</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary scale-110 bg-secondary-container/20 rounded-full p-2 transition-transform duration-500">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">blur_on</span>
+<span class="font-label-sm text-label-sm mt-1">Meenakshi</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-sm text-label-sm mt-1">Wealth</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/60">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Circles</span>
+</button>
+</nav>
+<!-- Conversational Input Shelf (Ambient Intelligence) -->
+<div class="fixed bottom-24 left-0 w-full px-container-padding-mobile z-40">
+<div class="max-w-2xl mx-auto glass-card rounded-full p-2 flex items-center gap-3 ai-glow border-secondary/20">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-secondary to-secondary-fixed flex items-center justify-center text-on-secondary shadow-lg">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</div>
+<input class="flex-1 bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50" placeholder="Ask about your financial documents..." type="text"/>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+<script>
+        // Micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1.02)';
+            });
+        });
+
+        // Simple scroll observer for header blur effect
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-sm');
+            } else {
+                header.classList.remove('shadow-sm');
+            }
+        });
+    </script>
+</body></html>

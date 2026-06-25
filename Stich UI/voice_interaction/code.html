@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meenakshi - Voice Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        
+        .orb-glow {
+            box-shadow: 0 0 80px 20px rgba(132, 85, 239, 0.4);
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 60px 10px rgba(132, 85, 239, 0.3); }
+            50% { transform: scale(1.08); opacity: 1; box-shadow: 0 0 100px 30px rgba(132, 85, 239, 0.5); }
+        }
+
+        .waveform-bar {
+            animation: wave 1.2s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { height: 8px; }
+            50% { height: 32px; }
+        }
+
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#faf9f6",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#efeeeb",
+                        "tertiary-container": "#00201d",
+                        "on-primary-container": "#7c839b",
+                        "surface": "#faf9f6",
+                        "surface-variant": "#e3e2e0",
+                        "on-surface-variant": "#45464d",
+                        "surface-container-highest": "#e3e2e0",
+                        "primary-fixed": "#dae2fd",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#1a1c1a",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-secondary-fixed": "#23005c",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1a1c1a",
+                        "on-error": "#ffffff",
+                        "primary-container": "#131b2e",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-dim": "#dbdad7",
+                        "tertiary-fixed": "#89f5e7",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "inverse-surface": "#2f312f",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-fixed": "#00201d",
+                        "secondary-container": "#8455ef",
+                        "surface-tint": "#565e74",
+                        "surface-container-high": "#e9e8e5",
+                        "tertiary-fixed-dim": "#6bd8cb",
+                        "primary": "#000000",
+                        "error-container": "#ffdad6",
+                        "secondary": "#6b38d4",
+                        "background": "#faf9f6",
+                        "outline-variant": "#c6c6cd",
+                        "surface-container-low": "#f4f3f1",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#0c9488",
+                        "on-primary-fixed": "#131b2e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-mobile": "20px",
+                        "container-padding-desktop": "40px",
+                        "stack-lg": "48px",
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "stack-md": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-primary-container text-white overflow-hidden font-body-md text-body-md h-screen flex flex-col items-center">
+<!-- Global Background Shader -->
+<div class="fixed inset-0 z-0">
+
+<div class="absolute inset-0 bg-gradient-to-b from-transparent via-primary-container/20 to-primary-container"></div>
+</div>
+<!-- Immersive Header -->
+<header class="relative z-50 w-full flex justify-between items-center px-container-padding-mobile h-16 pt-8">
+<button aria-label="Close" class="w-10 h-10 flex items-center justify-center rounded-full glass-panel hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-semibold tracking-tight">Meenakshi</span>
+<span class="font-label-sm text-label-sm text-on-primary-container opacity-80">Listening...</span>
+</div>
+<button aria-label="Settings" class="w-10 h-10 flex items-center justify-center rounded-full glass-panel hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<!-- Main Content Area: AI Orb -->
+<main class="relative z-10 flex-grow w-full flex flex-col items-center justify-center px-container-padding-mobile">
+<!-- Live Transcription Area (Top Half) -->
+<div class="absolute top-12 left-0 right-0 px-10 text-center space-y-4 max-w-xl mx-auto pointer-events-none">
+<p class="text-on-primary-container/40 font-body-md text-body-md fade-in-up" style="animation-delay: 0.2s;">
+                "How is my portfolio performance today?"
+            </p>
+<p class="text-white/90 font-headline-lg-mobile text-headline-lg-mobile font-medium fade-in-up" style="animation-delay: 0.4s;">
+                Analyzing your asset distribution and recent market trends. One moment.
+            </p>
+</div>
+<!-- Central Orb -->
+<div class="relative group cursor-pointer">
+<!-- Outer Aura -->
+<div class="absolute inset-0 rounded-full bg-secondary opacity-20 blur-[120px] scale-150 animate-pulse"></div>
+<!-- Main Orb -->
+<div class="relative w-48 h-48 md:w-64 md:h-64 rounded-full orb-glow overflow-hidden flex items-center justify-center border border-white/20">
+
+<!-- Avatar Mask if needed -->
+<div class="absolute inset-0 bg-gradient-to-tr from-secondary/40 to-transparent mix-blend-overlay"></div>
+</div>
+<!-- Waveform Animation Rings -->
+<div class="absolute inset-0 -m-4 border border-secondary/20 rounded-full animate-ping opacity-30"></div>
+</div>
+<!-- Dynamic Waveform (Bottom Center) -->
+<div class="absolute bottom-40 flex items-center justify-center gap-1.5 h-12">
+<div class="waveform-bar w-1 bg-secondary-fixed-dim rounded-full" style="animation-delay: 0.1s; height: 12px;"></div>
+<div class="waveform-bar w-1 bg-secondary-fixed-dim rounded-full" style="animation-delay: 0.3s; height: 24px;"></div>
+<div class="waveform-bar w-1 bg-white rounded-full" style="animation-delay: 0.2s; height: 36px;"></div>
+<div class="waveform-bar w-1 bg-secondary rounded-full" style="animation-delay: 0.4s; height: 48px;"></div>
+<div class="waveform-bar w-1 bg-white rounded-full" style="animation-delay: 0.5s; height: 32px;"></div>
+<div class="waveform-bar w-1 bg-secondary-fixed-dim rounded-full" style="animation-delay: 0.2s; height: 20px;"></div>
+<div class="waveform-bar w-1 bg-secondary-fixed-dim rounded-full" style="animation-delay: 0.4s; height: 10px;"></div>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<footer class="relative z-50 w-full px-container-padding-mobile pb-12 flex flex-col items-center gap-8">
+<!-- Smart Prompt Chips -->
+<div class="flex flex-wrap justify-center gap-3">
+<button class="px-5 py-2.5 glass-panel rounded-full text-label-sm font-label-sm text-secondary-fixed-dim hover:bg-secondary-container/20 transition-all active:scale-95">
+                Optimize Savings
+            </button>
+<button class="px-5 py-2.5 glass-panel rounded-full text-label-sm font-label-sm text-secondary-fixed-dim hover:bg-secondary-container/20 transition-all active:scale-95">
+                Market Summary
+            </button>
+<button class="px-5 py-2.5 glass-panel rounded-full text-label-sm font-label-sm text-secondary-fixed-dim hover:bg-secondary-container/20 transition-all active:scale-95">
+                Connect Wallet
+            </button>
+</div>
+<!-- Interaction Controls -->
+<div class="w-full max-w-md flex justify-between items-center px-4">
+<button class="flex flex-col items-center gap-2 text-on-primary-container hover:text-white transition-colors">
+<div class="w-12 h-12 glass-panel rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">keyboard</span>
+</div>
+<span class="font-label-sm text-label-sm">Text</span>
+</button>
+<button class="group">
+<div class="w-20 h-20 bg-secondary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(107,56,212,0.6)] group-hover:scale-105 group-active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined !text-4xl" data-weight="fill">mic</span>
+</div>
+</button>
+<button class="flex flex-col items-center gap-2 text-on-primary-container hover:text-white transition-colors">
+<div class="w-12 h-12 glass-panel rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">volume_up</span>
+</div>
+<span class="font-label-sm text-label-sm">Audio</span>
+</button>
+</div>
+</footer>
+<!-- Ambient Floating Orbs (Static visual interest) -->
+<div class="fixed top-1/4 -left-20 w-64 h-64 bg-secondary/10 blur-[100px] rounded-full"></div>
+<div class="fixed bottom-1/4 -right-20 w-80 h-80 bg-primary-fixed-dim/5 blur-[120px] rounded-full"></div>
+<script>
+        // Micro-interaction: Randomize waveform heights slightly for realism
+        const bars = document.querySelectorAll('.waveform-bar');
+        setInterval(() => {
+            bars.forEach(bar => {
+                const randomScale = 0.5 + Math.random() * 1.5;
+                bar.style.transform = `scaleY(${randomScale})`;
+            });
+        }, 300);
+
+        // Interaction: Clicking the mic button toggles active state
+        const micBtn = document.querySelector('.group .bg-secondary');
+        let isActive = true;
+        micBtn.addEventListener('click', () => {
+            isActive = !isActive;
+            if (isActive) {
+                micBtn.classList.remove('bg-error');
+                micBtn.classList.add('bg-secondary');
+                micBtn.innerHTML = '<span class="material-symbols-outlined !text-4xl" data-weight="fill">mic</span>';
+                document.querySelector('.text-on-primary-container').innerText = "Listening...";
+            } else {
+                micBtn.classList.remove('bg-secondary');
+                micBtn.classList.add('bg-error');
+                micBtn.innerHTML = '<span class="material-symbols-outlined !text-4xl" data-weight="fill">mic_off</span>';
+                document.querySelector('.text-on-primary-container').innerText = "Paused";
+            }
+        });
+    </script>
+</body></html>
