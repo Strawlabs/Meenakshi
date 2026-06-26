@@ -108,3 +108,132 @@ export async function getFinancialEvents(categoryFilter = 'all'): Promise<Timeli
     };
   });
 }
+
+export async function getFinancialTimeline(userId: string, limit: number = 50) {
+  const { data, error } = await supabase
+    .from('email_events')
+    .select('*')
+    .eq('user_id', userId)
+    .order('received_at', { ascending: false })
+    .limit(limit);
+
+  if (error || !data) {
+    console.error('[financialTimelineService] getFinancialTimeline error:', error);
+    return [];
+  }
+
+  const grouped: Record<string, any[]> = {};
+  for (const event of data) {
+    const date = new Date(event.received_at);
+    const month = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    if (!grouped[month]) grouped[month] = [];
+    grouped[month].push(event);
+  }
+
+  return Object.keys(grouped).map(month => ({
+    month,
+    events: grouped[month]
+  }));
+}
+
+export async function getUpcomingObligations(userId: string) {
+  const now = new Date();
+  const next30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const { data, error } = await supabase
+    .from('email_events')
+    .select('*')
+    .eq('user_id', userId)
+    .neq('status', 'paid')
+    .gte('due_date', now.toISOString())
+    .lte('due_date', next30Days.toISOString())
+    .order('due_date', { ascending: true });
+
+  if (error || !data) {
+    console.error('[financialTimelineService] getUpcomingObligations error:', error);
+    return [];
+  }
+
+  return data;
+}
+
+export async function detectAnomalies(userId: string) {
+  const anomalies: { type: string; description: string; event_id: string; severity: 'high' | 'medium' | 'low' }[] = [];
+
+  const { data, error } = await supabase
+    .from('email_events')
+    .select('*')
+    .eq('user_id', userId)
+    .order('received_at', { ascending: false });
+
+  if (error || !data) {
+    console.error('[financialTimelineService] detectAnomalies error:', error);
+    return anomalies;
+  }
+
+  const now = new Date();
+
+  // Check rules
+  for (let i = 0; i < data.length; i++) {
+    const event = data[i];
+
+    // a) Amount > 1,00,000
+    if (event.amount && Number(event.amount) > 100000) {
+      anomalies.push({
+        type: 'large_transaction',
+        description: `Unusually large transaction detected: ₹${event.amount}`,
+        event_id: event.id,
+        severity: 'high'
+      });
+    }
+
+    // c) EMI or bill passed due date
+    if ((event.category === 'emi' || event.category === 'bill') && event.due_date && event.status !== 'paid') {
+      const dueDate = new Date(event.due_date);
+      if (dueDate < now) {
+        anomalies.push({
+          type: 'missed_payment',
+          description: `Missed payment for ${event.category} due on ${event.due_date}`,
+          event_id: event.id,
+          severity: 'high'
+        });
+      }
+    }
+  }
+
+  // b) Same category > 3 times in 7 days
+  const categoryGroups: Record<string, any[]> = {};
+  for (const event of data) {
+    if (!event.category) continue;
+    if (!categoryGroups[event.category]) categoryGroups[event.category] = [];
+    categoryGroups[event.category].push(event);
+  }
+
+  for (const category in categoryGroups) {
+    const events = categoryGroups[category];
+    
+    // Evaluate sliding window
+    for (let i = 0; i < events.length; i++) {
+      let count = 1;
+      const start = new Date(events[i].received_at).getTime();
+      for (let j = i + 1; j < events.length; j++) {
+        const end = new Date(events[j].received_at).getTime();
+        const diffDays = Math.abs(start - end) / (1000 * 60 * 60 * 24);
+        if (diffDays <= 7) {
+          count++;
+        }
+      }
+      if (count > 3) {
+        anomalies.push({
+          type: 'high_frequency',
+          description: `Category ${category} appeared ${count} times within 7 days`,
+          event_id: events[i].id,
+          severity: 'medium'
+        });
+        break; // Only report once per category per timeframe, simplify logic
+      }
+    }
+  }
+
+  return anomalies;
+}

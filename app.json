@@ -7,7 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow Meenakshi to access your microphone for voice conversations.",
+        "NSCameraUsageDescription": "Allow Meenakshi to access your camera to scan business cards."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,13 +21,23 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.kavyapy.meenakshi"
+      "package": "com.kavyapy.meenakshi",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Meenakshi to access your microphone for voice conversations."
+        }
+      ]
     ]
   }
 }

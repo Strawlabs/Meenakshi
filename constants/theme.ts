@@ -125,8 +125,10 @@ export const Radius = {
 
 export const FontSize = {
   labelSm: 12,
+  bodySm: 14,
   bodyMd: 16,
   bodyLg: 18,
+  headlineSm: 20,
   headlineLg: 32,
   headlineMobile: 28,
   displayLg: 48,
@@ -150,6 +152,12 @@ export const Typography = {
     fontWeight: '600' as const,
     lineHeight: 33.6, // 28 * 1.2
   },
+  headlineSm: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+    lineHeight: 26,
+    letterSpacing: -0.2,
+  },
   bodyLg: {
     fontSize: 18,
     fontWeight: '400' as const,
@@ -159,6 +167,11 @@ export const Typography = {
     fontSize: 16,
     fontWeight: '400' as const,
     lineHeight: 25.6, // 16 * 1.6
+  },
+  bodySm: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+    lineHeight: 20,
   },
   labelSm: {
     fontSize: 12,

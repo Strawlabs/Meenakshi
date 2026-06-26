@@ -1,3 +1,4 @@
+import './lib/base64Polyfill';
 import { registerRootComponent } from 'expo';
 
 import App from './App';

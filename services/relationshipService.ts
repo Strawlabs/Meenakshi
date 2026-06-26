@@ -43,7 +43,18 @@ export async function getContactProfile(contactId: string) {
     .select('link_type, email_events(*)')
     .eq('contact_id', contactId);
 
-  let emails = emailLinks?.map(link => link.email_events).filter(Boolean) || [];
+  let emails: any[] = [];
+  if (emailLinks) {
+    emailLinks.forEach(link => {
+      if (link.email_events) {
+        if (Array.isArray(link.email_events)) {
+          emails.push(...link.email_events);
+        } else {
+          emails.push(link.email_events);
+        }
+      }
+    });
+  }
 
   // Also fetch emails directly matching the contact's email address to catch historical emails
   if (contact.email) {
