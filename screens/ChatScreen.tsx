@@ -23,6 +23,8 @@ import {
   buildEmailContext,
   MemoryMessage,
 } from '../services/memoryService';
+import { detectFollowUps } from '../services/followUpService';
+import { saveBusinessCard } from '../services/businessCardService';
 import supabase from '../lib/supabase';
 
 // ⚠️ Set EXPO_PUBLIC_GEMINI_API_KEY in .env
@@ -61,6 +63,7 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [memoryLoaded, setMemoryLoaded] = useState(false);
+  const [scannedCardBase64, setScannedCardBase64] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -74,6 +77,14 @@ export default function ChatScreen() {
     messagesRef.current = messages;
     sessionIdRef.current = sessionId;
   }, [messages, sessionId]);
+
+  // Listen for scanned card returned from camera
+  useEffect(() => {
+    if (route.params?.scannedCardBase64) {
+      setScannedCardBase64(route.params.scannedCardBase64);
+      navigation.setParams({ scannedCardBase64: undefined } as any);
+    }
+  }, [route.params?.scannedCardBase64]);
 
   // Load memory context on mount
   useEffect(() => {
@@ -170,10 +181,61 @@ export default function ChatScreen() {
         enrichedSystemPrompt += `\n\n${financialEmailHistory}`;
       }
 
-      const responseText = await generateGeminiContent(text, {
-        systemInstruction: enrichedSystemPrompt,
-        model: 'gemini-3-flash-preview',
-      });
+      let responseText = '';
+
+      if (scannedCardBase64) {
+        // Special flow for scanning card + chat context
+        const ocrPrompt = `
+You are Meenakshi. The user has uploaded a business card image and is providing additional details/context about how/where they met this person in the message: "${text}".
+
+1. Extract all contact details from the business card: Name, Designation (role), Organization (company), Email, Phone, Address.
+2. Combine the user's message "${text}" and save it as the relationship notes/context.
+3. Formulate a conversational response confirming that you extracted the details and saved the contact successfully (e.g. "I've successfully saved Martin Saenz as a contact. I noted that you met at the coffee shop yesterday.").
+4. Return ONLY a JSON object matching this schema. Return as JSON only, no markdown formatting or \`\`\` blocks:
+{
+  "conversational_response": "string",
+  "contact_details": {
+    "name": "string (required)",
+    "designation": "string or null",
+    "organization": "string or null",
+    "email": "string or null",
+    "phone": "string or null",
+    "address": "string or null",
+    "notes": "string (the user's context/message)"
+  }
+}
+        `.trim();
+
+        const geminiRes = await generateGeminiContent(ocrPrompt, {
+          responseMimeType: 'application/json',
+          model: 'gemini-3-flash-preview',
+          imagePart: {
+            mimeType: 'image/jpeg',
+            data: scannedCardBase64,
+          },
+        });
+
+        let parsedRes: any;
+        try {
+          const cleanText = geminiRes.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+          parsedRes = JSON.parse(cleanText);
+        } catch (err) {
+          console.error('[ChatScreen] OCR JSON parse failed:', geminiRes);
+          throw new Error('Could not parse contact details from Gemini. Please try again.');
+        }
+
+        // Save using businessCardService
+        await saveBusinessCard(parsedRes.contact_details);
+        responseText = parsedRes.conversational_response;
+        setScannedCardBase64(null); // Clear attachment state
+      } else {
+        // Regular chat flow
+        const response = await generateGeminiContent(text, {
+          systemInstruction: enrichedSystemPrompt,
+          model: 'gemini-3-flash-preview',
+        });
+        responseText = response;
+      }
 
       const modelMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -198,6 +260,15 @@ export default function ChatScreen() {
             sessionIdRef.current = id;
             setSessionId(id);
           }
+          
+          // Background follow-up detection based on recent messages
+          setTimeout(() => {
+            const contextText = real.slice(-4).map(m => `${m.role}: ${m.text}`).join('\n');
+            detectFollowUps(contextText, 'conversation').catch(err => {
+              console.log('[ChatScreen] Background follow-up detection failed:', err);
+            });
+          }, 100);
+          
         }).catch(() => {});
       }
     } catch (err: any) {
@@ -305,14 +376,30 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Attachment banner */}
+        {scannedCardBase64 && (
+          <View style={styles.attachmentBanner}>
+            <Text style={styles.attachmentText}>📎 Scanned business card attached. Type context/how you met below.</Text>
+            <TouchableOpacity onPress={() => setScannedCardBase64(null)} style={styles.attachmentCloseBtn}>
+              <Text style={styles.attachmentCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Input bar */}
         <View style={styles.inputBar}>
+          <TouchableOpacity
+            style={styles.cameraBtn}
+            onPress={() => navigation.navigate('BusinessCard', { origin: 'chat' } as any)}
+          >
+            <Text style={styles.cameraBtnText}>📷</Text>
+          </TouchableOpacity>
           <TextInput
             ref={inputRef}
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="Ask Meenakshi anything…"
+            placeholder={scannedCardBase64 ? "Describe how/where you met..." : "Ask Meenakshi anything…"}
             placeholderTextColor={`${Colors.onSurfaceVariant}80`}
             multiline
             returnKeyType="send"
@@ -536,4 +623,41 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: Colors.surfaceContainerHighest },
   sendBtnText: { ...Typography.bodyLg, fontWeight: '700', color: Colors.onSecondary },
+  cameraBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.glass,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBtnText: {
+    fontSize: 18,
+  },
+  attachmentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(107, 56, 212, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 56, 212, 0.2)',
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.containerMobile,
+  },
+  attachmentText: {
+    ...Typography.bodySm,
+    color: Colors.purple,
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  attachmentCloseBtn: {
+    padding: 4,
+  },
+  attachmentCloseText: {
+    color: Colors.purple,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });

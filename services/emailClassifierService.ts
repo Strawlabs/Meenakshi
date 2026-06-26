@@ -33,7 +33,7 @@ interface ClassificationResult {
 /**
  * Classifies a single raw email using Gemini and saves the results to Supabase.
  */
-export async function classifyAndSaveEmail(userId: string, email: RawEmailData): Promise<boolean> {
+export async function classifyAndSaveEmail(userId: string, email: RawEmailData): Promise<string | null> {
   if (!GEMINI_API_KEY) {
     throw new Error('Missing EXPO_PUBLIC_GEMINI_API_KEY environment variable');
   }
@@ -48,7 +48,7 @@ export async function classifyAndSaveEmail(userId: string, email: RawEmailData):
 
   if (existingEvent) {
     // Already processed, skip
-    return false;
+    return null;
   }
 
   // 2. Call Gemini for Classification & Extraction
@@ -112,7 +112,7 @@ Return ONLY a JSON object matching this schema. Return as JSON only, no markdown
     canonicalEventId = duplicateMatch.id;
     console.log(`[emailClassifierService] Merging duplicate event: ${email.subject} linked to ${canonicalEventId}`);
     // If it's a duplicate, we skip inserting a new event as per requirements.
-    return false;
+    return null;
   }
 
   // 4. Save Event to public.email_events
@@ -199,5 +199,5 @@ Return ONLY a JSON object matching this schema. Return as JSON only, no markdown
     console.warn('[emailClassifierService] Failed to extract or link entities:', entityErr);
   }
 
-  return true;
+  return savedEvent.id;
 }

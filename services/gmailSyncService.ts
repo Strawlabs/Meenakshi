@@ -244,8 +244,26 @@ export async function syncUserEmails(): Promise<{ totalFetched: number; totalSav
     };
 
     try {
-      const saved = await classifyAndSaveEmail(user.id, emailData);
-      if (saved) savedCount++;
+      const eventId = await classifyAndSaveEmail(user.id, emailData);
+      if (eventId) {
+        savedCount++;
+        
+        // Link to contact if exists
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('email', emailData.senderEmail)
+          .maybeSingle();
+          
+        if (contact) {
+          await supabase.from('contact_email_links').insert({
+            contact_id: contact.id,
+            email_event_id: eventId,
+            link_type: 'correspondent'
+          });
+        }
+      }
       
       // Update our tracker to the last successfully processed email ID
       lastSuccessfulId = msg.id;
