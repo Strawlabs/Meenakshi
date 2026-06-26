@@ -242,7 +242,7 @@ export default function HomeScreen() {
         {/* Suggested Inquiries — Stitch */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Suggested Inquiries</Text>
-          {SUGGESTED_PROMPTS.map((prompt, i) => (
+          {(SUGGESTED_PROMPTS || []).map((prompt, i) => (
             <GlassCard
               key={i}
               onPress={() => handlePrompt(prompt)}

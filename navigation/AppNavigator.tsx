@@ -16,15 +16,31 @@ import FinanceScreen from '../screens/FinanceScreen';
 import RelationshipsScreen from '../screens/RelationshipsScreen';
 import MemoryScreen from '../screens/MemoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import BusinessCardScreen from '../screens/BusinessCardScreen';
+import ContactProfileScreen from '../screens/ContactProfileScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
   Welcome: undefined;
   Onboarding: undefined;
   Main: undefined;
-  Chat: { initialQuery?: string };
+  Chat: { initialQuery?: string; scannedCardBase64?: string };
   Voice: undefined;
   Settings: undefined;
+  BusinessCard: {
+    origin?: 'chat';
+    editContactId?: string;
+    editContactData?: {
+      name: string;
+      designation?: string;
+      organization?: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      notes?: string;
+    };
+  } | undefined;
+  ContactProfile: { contactId: string };
 };
 
 export type TabParamList = {
@@ -137,6 +153,16 @@ export default function AppNavigator() {
           name="Settings"
           component={SettingsScreen}
           options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="BusinessCard"
+          component={BusinessCardScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="ContactProfile"
+          component={ContactProfileScreen}
+          options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

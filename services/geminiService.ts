@@ -11,6 +11,10 @@ interface GeminiGenerateConfig {
   responseMimeType?: string;
   systemInstruction?: string;
   model?: string;
+  imagePart?: {
+    mimeType: string;
+    data: string;
+  };
 }
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
@@ -87,14 +91,21 @@ export async function generateGeminiContent(
       ...FALLBACK_MODELS.filter(m => m !== requestedModel)
     ];
 
+    const parts: any[] = [{ text: prompt }];
+
+    if (config?.imagePart) {
+      parts.push({
+        inlineData: {
+          mimeType: config.imagePart.mimeType,
+          data: config.imagePart.data
+        }
+      });
+    }
+
     const bodyPayload: any = {
       contents: [
         {
-          parts: [
-            {
-              text: prompt,
-            },
-          ],
+          parts,
         },
       ],
     };
@@ -129,14 +140,19 @@ export async function generateGeminiContent(
 
         while (attempt < maxAttempts) {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
             const response = await fetch(url, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify(bodyPayload),
+              signal: controller.signal,
             });
 
+            clearTimeout(timeoutId);
             const json = await response.json();
 
             if (!response.ok) {
