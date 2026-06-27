@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
 import { parseBusinessCard, saveBusinessCard, updateContact, BusinessCardData } from '../services/businessCardService';
 

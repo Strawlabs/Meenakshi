@@ -18,38 +18,10 @@ import MemoryScreen from '../screens/MemoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import BusinessCardScreen from '../screens/BusinessCardScreen';
 import ContactProfileScreen from '../screens/ContactProfileScreen';
+import DocumentsScreen from '../screens/DocumentsScreen';
+import DocumentDetailScreen from '../screens/DocumentDetailScreen';
 
-export type RootStackParamList = {
-  Splash: undefined;
-  Welcome: undefined;
-  Onboarding: undefined;
-  Main: undefined;
-  Chat: { initialQuery?: string; scannedCardBase64?: string };
-  Voice: undefined;
-  Settings: undefined;
-  BusinessCard: {
-    origin?: 'chat';
-    editContactId?: string;
-    editContactData?: {
-      name: string;
-      designation?: string;
-      organization?: string;
-      email?: string;
-      phone?: string;
-      address?: string;
-      notes?: string;
-    };
-  } | undefined;
-  ContactProfile: { contactId: string };
-};
-
-export type TabParamList = {
-  Home: undefined;
-  Memory: undefined;
-  _Spacer: undefined;
-  Finance: undefined;
-  Circles: undefined;
-};
+import { RootStackParamList, TabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -162,6 +134,16 @@ export default function AppNavigator() {
         <Stack.Screen
           name="ContactProfile"
           component={ContactProfileScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="Documents"
+          component={DocumentsScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="DocumentDetail"
+          component={DocumentDetailScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>

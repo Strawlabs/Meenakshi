@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, FontSize } from '../constants/theme';
-import { MOCK_BRIEFINGS, SUGGESTED_PROMPTS } from '../constants';
+import { MOCK_BRIEFINGS, SUGGESTED_PROMPTS } from '../constants/index';
 import supabase from '../lib/supabase';
+import { detectAnomalies } from '../services/financialTimelineService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -63,6 +64,7 @@ function GlassCard({ children, style, onPress }: any) {
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
   const [briefings, setBriefings] = useState<any[]>([]);
+  const [highSeverityAnomalies, setHighSeverityAnomalies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,9 +73,15 @@ export default function HomeScreen() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setBriefings([]);
+          setHighSeverityAnomalies([]);
           setLoading(false);
           return;
         }
+
+        // Detect Anomalies
+        const anomalies = await detectAnomalies(user.id);
+        const highSeverity = anomalies.filter((a: any) => a.severity === 'high');
+        setHighSeverityAnomalies(highSeverity);
 
         const { data: events, error } = await supabase
           .from('email_events')
@@ -188,6 +196,24 @@ export default function HomeScreen() {
           <Text style={styles.heroSub}>I've prepared today's briefing for you.</Text>
         </View>
 
+        {highSeverityAnomalies.length > 0 && (
+          <TouchableOpacity
+            style={styles.anomalyCard}
+            onPress={() => navigation.navigate('Finance' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.anomalyIconWrap}>
+              <Text style={styles.anomalyIconText}>🚨</Text>
+            </View>
+            <View style={styles.anomalyTextWrap}>
+              <Text style={styles.anomalyTitle}>
+                Meenakshi detected {highSeverityAnomalies.length} unusual financial event{highSeverityAnomalies.length > 1 ? 's' : ''}.
+              </Text>
+              <Text style={styles.anomalySub}>Tap to review.</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Daily AI Briefing Cards — Stitch narrative style */}
         <View style={styles.section}>
           {briefings.length === 0 ? (
@@ -242,7 +268,7 @@ export default function HomeScreen() {
         {/* Suggested Inquiries — Stitch */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Suggested Inquiries</Text>
-          {(SUGGESTED_PROMPTS || []).map((prompt, i) => (
+          {(SUGGESTED_PROMPTS || []).map((prompt: string, i: number) => (
             <GlassCard
               key={i}
               onPress={() => handlePrompt(prompt)}
@@ -265,7 +291,7 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.toolLabel}>Scan Card</Text>
             </GlassCard>
-            <GlassCard style={styles.toolCard}>
+            <GlassCard style={styles.toolCard} onPress={() => navigation.navigate('Documents' as any)}>
               <View style={styles.toolIconWrap}>
                 <Text style={styles.toolIconText}>📄</Text>
               </View>
@@ -387,6 +413,46 @@ const styles = StyleSheet.create({
   heroSub: {
     fontSize: FontSize.bodyLg,
     color: Colors.onSurfaceVariant,
+    opacity: 0.8,
+  },
+  // Anomaly Card
+  anomalyCard: {
+    backgroundColor: Colors.errorContainer,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    shadowColor: Colors.error,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  anomalyIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  anomalyIconText: {
+    fontSize: 20,
+  },
+  anomalyTextWrap: {
+    flex: 1,
+  },
+  anomalyTitle: {
+    fontSize: FontSize.bodyMd,
+    fontWeight: '700',
+    color: Colors.onErrorContainer,
+    marginBottom: 4,
+  },
+  anomalySub: {
+    fontSize: FontSize.labelSm,
+    color: Colors.onErrorContainer,
     opacity: 0.8,
   },
   // Glass Card — Stitch

@@ -13,8 +13,10 @@ import {
   Animated,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as DocumentPicker from 'expo-document-picker';
 import { generateGeminiContent } from '../services/geminiService';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
 import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
 import {
@@ -25,6 +27,8 @@ import {
 } from '../services/memoryService';
 import { detectFollowUps } from '../services/followUpService';
 import { saveBusinessCard } from '../services/businessCardService';
+import { getLatestSnapshot } from '../services/financialHealthService';
+import { getDocumentById, getUserDocuments, Document, uploadDocument, processDocument } from '../services/documentService';
 import supabase from '../lib/supabase';
 
 // ⚠️ Set EXPO_PUBLIC_GEMINI_API_KEY in .env
@@ -43,11 +47,13 @@ const QUICK_PROMPTS = [
   'What bills are due this week?',
   'Summarize my finances',
   'Who should I follow up with?',
-  'Any insurance renewals coming?',
+  'What did we discuss last time?',
 ];
 
+type NavProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function ChatScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteType>();
   const initialQuery = route.params?.initialQuery;
 
@@ -64,6 +70,7 @@ export default function ChatScreen() {
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [memoryLoaded, setMemoryLoaded] = useState(false);
   const [scannedCardBase64, setScannedCardBase64] = useState<string | null>(null);
+  const [activeDocumentId, setActiveDocumentId] = useState<string | undefined>(route.params?.documentId);
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -147,10 +154,18 @@ export default function ChatScreen() {
       const memCtx = await buildMemoryContext();
       const emailCtx = await buildEmailContext();
       
-      // Third context fetch: User's last 10 email events
-      let financialEmailHistory = '';
+      // Third context fetch: User's financial snapshot and last 10 email events
+      let financialContext = '';
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        const snapshot = await getLatestSnapshot(user.id);
+        const healthSummary = snapshot?.summary || 'No summary available.';
+        const obligations = snapshot?.upcoming_obligations || [];
+        
+        const obligationsStr = obligations.length > 0
+          ? obligations.map((o: any) => `- ${o.description || o.subject || o.category} due ${o.due_date} (₹${o.amount || '0'})`).join('\n')
+          : 'None';
+
         const { data: historyEvents } = await supabase
           .from('email_events')
           .select('received_at, category, amount, ai_summary, sender_name, entity_email_links(entities(name))')
@@ -158,14 +173,43 @@ export default function ChatScreen() {
           .order('received_at', { ascending: false })
           .limit(10);
         
+        let eventsStr = 'None';
         if (historyEvents && historyEvents.length > 0) {
-          const formattedEvents = historyEvents.map((e: any) => {
+          eventsStr = historyEvents.map((e: any) => {
             const dateStr = new Date(e.received_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
             const amountStr = e.amount ? e.amount : '0';
             const entityStr = e.entity_email_links?.[0]?.entities?.name || e.sender_name || 'Unknown Entity';
             return `- [${dateStr}] [${e.category}] [${entityStr}]: ₹${amountStr} — [${e.ai_summary || ''}]`;
-          });
-          financialEmailHistory = `FINANCIAL EMAIL HISTORY:\n${formattedEvents.join('\n')}`;
+          }).join('\n');
+        }
+
+        financialContext = `FINANCIAL CONTEXT: ${healthSummary}\n\nUPCOMING OBLIGATIONS:\n${obligationsStr}\n\nRECENT FINANCIAL EVENTS:\n${eventsStr}`;
+      }
+
+      // Fourth context: active document (if launched from DocumentDetailScreen or uploaded in chat)
+      let documentContext = '';
+      const documentId = activeDocumentId;
+      if (documentId) {
+        const doc = await getDocumentById(documentId);
+        if (doc) {
+          const rawText = (doc.raw_extracted_text || '').slice(0, 3000);
+          documentContext = `DOCUMENT CONTEXT: The user is asking about a document they uploaded.
+TYPE: ${doc.document_type || 'unknown'}
+SUMMARY: ${doc.summary || 'No summary available.'}
+KEY DATES: ${JSON.stringify(doc.key_dates || [])}
+OBLIGATIONS: ${JSON.stringify(doc.obligations || [])}
+RAW TEXT (truncated):\n${rawText}`;
+        }
+      }
+
+      // Fifth context: recent documents (if no specific active document)
+      let recentDocumentsContext = '';
+      if (!documentId && user) {
+        const recentDocs = await getUserDocuments(user.id);
+        const topDocs = recentDocs.slice(0, 3);
+        if (topDocs.length > 0) {
+          recentDocumentsContext = `RECENT UPLOADED DOCUMENTS (for budget planning and general context):
+${topDocs.map((doc: Document) => `- [${doc.file_name}] (${doc.document_type}): ${doc.summary || 'No summary'} | Obligations: ${JSON.stringify(doc.obligations || [])}`).join('\n')}`;
         }
       }
 
@@ -177,8 +221,14 @@ export default function ChatScreen() {
       if (emailCtx) {
         enrichedSystemPrompt += `\n\n${emailCtx}`;
       }
-      if (financialEmailHistory) {
-        enrichedSystemPrompt += `\n\n${financialEmailHistory}`;
+      if (financialContext) {
+        enrichedSystemPrompt += `\n\n${financialContext}`;
+      }
+      if (documentContext) {
+        enrichedSystemPrompt += `\n\n${documentContext}`;
+      }
+      if (recentDocumentsContext) {
+        enrichedSystemPrompt += `\n\n${recentDocumentsContext}`;
       }
 
       let responseText = '';
@@ -288,6 +338,49 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
     }
   };
 
+  async function handleDocumentUpload() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      const { uri, name, mimeType } = asset;
+
+      setIsLoading(true);
+
+      const uploaded = await uploadDocument(user.id, uri, name || 'document', mimeType || 'application/pdf');
+      if (!uploaded) {
+        setIsLoading(false);
+        return;
+      }
+      
+      const processed = await processDocument(uploaded.id);
+      if (processed) {
+        setActiveDocumentId(processed.id);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: 'model',
+            text: `I've successfully uploaded and processed your document "${processed.file_name}". You can now ask me questions about it!`,
+            timestamp: Date.now(),
+          }
+        ]);
+        scrollToBottom();
+      }
+    } catch (err: any) {
+      console.error('[ChatScreen] Upload error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === 'user';
     return (
@@ -328,7 +421,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => navigation.navigate('Voice' as never)}
+          onPress={() => navigation.navigate('Voice')}
         >
           <Text style={styles.headerBtnText}>🎙️</Text>
         </TouchableOpacity>
@@ -390,7 +483,15 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
         <View style={styles.inputBar}>
           <TouchableOpacity
             style={styles.cameraBtn}
-            onPress={() => navigation.navigate('BusinessCard', { origin: 'chat' } as any)}
+            onPress={handleDocumentUpload}
+            disabled={isLoading}
+          >
+            <Text style={styles.cameraBtnText}>📁</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.cameraBtn}
+            onPress={() => navigation.navigate('BusinessCard', { origin: 'chat' })}
+            disabled={isLoading}
           >
             <Text style={styles.cameraBtnText}>📷</Text>
           </TouchableOpacity>

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, FontSize } from '../constants/theme';
 import { getAllContacts } from '../services/relationshipService';
 import { getFollowUps, markFollowUpDone } from '../services/followUpService';

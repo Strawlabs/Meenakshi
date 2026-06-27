@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
 import { getContactProfile, generateRelationshipSummary } from '../services/relationshipService';
 import { parseManualFollowUp } from '../services/followUpService';
