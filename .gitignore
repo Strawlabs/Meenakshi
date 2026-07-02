@@ -43,3 +43,4 @@ scratch/
 inspect_db.js
 list_models.js
 test_models.js
+.env
