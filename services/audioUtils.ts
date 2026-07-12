@@ -1,5 +1,14 @@
+/**
+ * Audio utilities for Gemini Live API integration.
+ *
+ * - encode/decode: Base64 ↔ Uint8Array
+ * - decodeAudioData: PCM Int16 → AudioBuffer (Web playback)
+ * - pcmToWav: Raw PCM base64 → WAV base64 (Native playback)
+ */
 
-export function decode(base64: string) {
+// ─── Base64 ──────────────────────────────────────────────────────────────────
+
+export function decode(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -9,7 +18,7 @@ export function decode(base64: string) {
   return bytes;
 }
 
-export function encode(bytes: Uint8Array) {
+export function encode(bytes: Uint8Array): string {
   let binary = '';
   const len = bytes.byteLength;
   for (let i = 0; i < len; i++) {
@@ -17,6 +26,8 @@ export function encode(bytes: Uint8Array) {
   }
   return btoa(binary);
 }
+
+// ─── Web: PCM → AudioBuffer ─────────────────────────────────────────────────
 
 export async function decodeAudioData(
   data: Uint8Array,
@@ -35,4 +46,102 @@ export async function decodeAudioData(
     }
   }
   return buffer;
+}
+
+// ─── Native: PCM → WAV ──────────────────────────────────────────────────────
+
+/**
+ * Write an ASCII string into a DataView at a given offset.
+ */
+function writeString(view: DataView, offset: number, str: string): void {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+/**
+ * Create a 44-byte WAV file header for raw PCM data.
+ *
+ * Gemini Live API sends 24 kHz, mono, 16-bit little-endian PCM.
+ * Native audio players (expo-audio AudioPlayer) need a valid WAV
+ * container to decode the audio.
+ */
+export function createWavHeader(
+  pcmByteLength: number,
+  sampleRate: number = 24000,
+  numChannels: number = 1,
+  bitsPerSample: number = 16,
+): ArrayBuffer {
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const buffer = new ArrayBuffer(44);
+  const view = new DataView(buffer);
+
+  // RIFF chunk descriptor
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + pcmByteLength, true);
+  writeString(view, 8, 'WAVE');
+
+  // "fmt " sub-chunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);          // sub-chunk size (16 for PCM)
+  view.setUint16(20, 1, true);           // audio format (1 = PCM)
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // "data" sub-chunk
+  writeString(view, 36, 'data');
+  view.setUint32(40, pcmByteLength, true);
+
+  return buffer;
+}
+
+/**
+ * Wrap raw PCM base64 with a WAV header.
+ * Returns a complete, playable WAV file as base64.
+ *
+ * @param pcmBase64    Raw PCM audio from Gemini (base64-encoded)
+ * @param sampleRate   Default 24000 (Gemini Live output rate)
+ * @param numChannels  Default 1 (mono)
+ * @param bitsPerSample Default 16
+ */
+export function pcmToWav(
+  pcmBase64: string,
+  sampleRate: number = 24000,
+  numChannels: number = 1,
+  bitsPerSample: number = 16,
+): string {
+  const pcmBytes = decode(pcmBase64);
+  const wavHeader = createWavHeader(pcmBytes.length, sampleRate, numChannels, bitsPerSample);
+
+  // Combine: 44-byte header + PCM payload
+  const wavBytes = new Uint8Array(wavHeader.byteLength + pcmBytes.length);
+  wavBytes.set(new Uint8Array(wavHeader), 0);
+  wavBytes.set(pcmBytes, wavHeader.byteLength);
+
+  return encode(wavBytes);
+}
+
+/**
+ * Concatenate multiple base64 PCM chunks into a single base64 PCM chunk.
+ * This is used to buffer tiny chunks into larger blocks for smoother playback.
+ */
+export function concatPCMBase64(chunks: string[]): string {
+  if (chunks.length === 0) return '';
+  if (chunks.length === 1) return chunks[0];
+
+  const decodedChunks = chunks.map(chunk => decode(chunk));
+  const totalLength = decodedChunks.reduce((acc, curr) => acc + curr.byteLength, 0);
+  const combined = new Uint8Array(totalLength);
+
+  let offset = 0;
+  for (const chunk of decodedChunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return encode(combined);
 }
