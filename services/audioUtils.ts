@@ -66,6 +66,10 @@ export function encode(bytes: Uint8Array): string {
 export function downsampleInt16(bytes: Uint8Array, inputRate: number, outputRate: number): Uint8Array {
   if (inputRate === outputRate || inputRate < outputRate) return bytes;
   
+  // Note: This is a naive decimation algorithm (picking every Nth sample).
+  // It lacks anti-aliasing/low-pass filtering prior to the sample drop, 
+  // so there will be some aliasing artifacts in the audio on 48kHz devices.
+  // We accept this quality trade-off for performance and simplicity here.
   const sampleRatio = inputRate / outputRate;
   const numInputSamples = bytes.length / 2;
   const numOutputSamples = Math.floor(numInputSamples / sampleRatio);
