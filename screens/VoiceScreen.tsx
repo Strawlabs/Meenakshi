@@ -211,7 +211,13 @@ export default function VoiceScreen() {
 
         {/* ── Header ── */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Main' as never)}>
+          <TouchableOpacity 
+            style={styles.headerBtn} 
+            onPress={() => {
+              stopSession();
+              navigation.navigate('Main' as never);
+            }}
+          >
             <Text style={styles.headerBtnText}>✕</Text>
           </TouchableOpacity>
 
@@ -321,7 +327,10 @@ export default function VoiceScreen() {
             {/* Keyboard → ChatScreen */}
             <TouchableOpacity
               style={styles.sideBtn}
-              onPress={() => navigation.navigate('Chat' as never)}
+              onPress={() => {
+                stopSession();
+                navigation.navigate('Chat' as never);
+              }}
             >
               <View style={styles.sidePill}>
                 <Text style={styles.sidePillIcon}>⌨️</Text>
