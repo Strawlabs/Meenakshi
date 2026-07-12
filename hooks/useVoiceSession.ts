@@ -140,6 +140,7 @@ export interface VoiceSessionState {
   startSession: () => Promise<void>;
   stopSession: () => void;
   forceTurnComplete: () => void;
+  interrupt: () => void;
   sendText: (text: string) => void;
   toggleMute: () => void;
 }
@@ -379,6 +380,34 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     }
   }, []);
 
+  // ── Manual Interrupt (Stop AI speaking) ────────────────────────────────────
+  const interrupt = useCallback(() => {
+    if (voiceStateRef.current !== 'speaking' && voiceStateRef.current !== 'processing') return;
+    console.log('[useVoiceSession] Interrupting AI playback...');
+
+    // Clear native playback queues
+    audioQueueRef.current = [];
+    preloadedQueueRef.current = [];
+    isQueuePlayingRef.current = false;
+    
+    // Stop active native player
+    if (nativePlayerRef.current) {
+      try { nativePlayerRef.current.remove(); } catch (_) {}
+      nativePlayerRef.current = null;
+    }
+
+    // Clear Web playback queues
+    if (Platform.OS === 'web') {
+      sourcesRef.current.forEach(src => {
+        try { src.stop(); } catch (_) {}
+      });
+      sourcesRef.current.clear();
+      nextStartTimeRef.current = 0;
+    }
+
+    setVoiceStateSync('listening');
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -511,11 +540,11 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       const finishChunk = () => {
         if (isDone) return;
         isDone = true;
-        FileSystem!.deleteAsync(uri, { idempotent: true }).catch(() => {});
         if (nativePlayerRef.current === player) nativePlayerRef.current = null;
 
         setTimeout(() => {
           try { player.remove(); } catch (_) {}
+          FileSystem!.deleteAsync(uri, { idempotent: true }).catch(() => {});
         }, PLAYER_REMOVAL_PADDING_MS);
 
         playNextFromQueue();
@@ -1019,6 +1048,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     startSession,
     stopSession,
     forceTurnComplete,
+    interrupt,
     sendText,
     toggleMute,
   };

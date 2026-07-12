@@ -52,6 +52,7 @@ export default function VoiceScreen() {
     startSession,
     stopSession,
     forceTurnComplete,
+    interrupt,
     sendText,
     toggleMute,
   } = session;
@@ -127,11 +128,10 @@ export default function VoiceScreen() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleMic = async () => {
-    if (isActive) {
-      // Instead of killing the session, force the AI to respond to what was just said
-      forceTurnComplete();
-    } else {
+    if (!isActive) {
       await startSession();
+    } else if (voiceState === 'speaking') {
+      interrupt();
     }
   };
 
