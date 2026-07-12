@@ -242,7 +242,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const recordingStartedAtRef = useRef(0);
 
   // Native audio playback queue
-  const audioQueueRef = useRef<string[]>([]); // Array of WAV base64 strings
+  const audioQueueRef = useRef<string[]>([]); // Array of WAV base64 strings awaiting write to disk
+  const preloadedQueueRef = useRef<{ uri: string; durationMs: number }[]>([]); // Array of preloaded files ready for instant playback
+  const isPreloadingRef = useRef(false);
   const isQueuePlayingRef = useRef(false);
   const pcmBufferRef = useRef<string[]>([]); // Array of raw PCM base64 strings
   const pcmBufferTotalLengthRef = useRef(0);
@@ -563,9 +565,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   // audio duration), the next chunk auto-plays from the queue.
 
   const playNextFromQueue = useCallback(async () => {
-    if (audioQueueRef.current.length === 0 || !FileSystem || !expoAudio) {
+    if (preloadedQueueRef.current.length === 0) {
       isQueuePlayingRef.current = false;
-      if (turnCompletePendingRef.current) {
+      // Switch back to listening only if the write pipeline is also empty
+      if (audioQueueRef.current.length === 0 && turnCompletePendingRef.current) {
         setVoiceStateSync('listening');
         turnCompletePendingRef.current = false;
       }
@@ -573,17 +576,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     }
 
     isQueuePlayingRef.current = true;
-    const wavBase64 = audioQueueRef.current.shift()!;
+    const { uri, durationMs } = preloadedQueueRef.current.shift()!;
 
     try {
-      const uri = FileSystem.cacheDirectory + `gemini_${Date.now()}.wav`;
-      await FileSystem.writeAsStringAsync(uri, wavBase64, {
-        encoding: (FileSystem as any).EncodingType.Base64,
-      });
-
       // Defer old-player removal to allow hardware audio buffer to drain.
-      // 500 ms is enough for virtually all devices; reduce only after on-device
-      // confirmation that no tail-clipping occurs on budget Android.
       if (nativePlayerRef.current) {
         const oldPlayer = nativePlayerRef.current;
         setTimeout(() => {
@@ -591,19 +587,15 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         }, PLAYER_REMOVAL_PADDING_MS);
       }
 
-      const player = (expoAudio as any).createAudioPlayer({ uri });
+      // This hits the preload registry — hot swap, zero file I/O overhead
+      const player = expoAudio!.createAudioPlayer({ uri });
       nativePlayerRef.current = player;
 
-      // Compute audio duration from WAV payload length for the fallback timeout.
-      const wavBytes = decode(wavBase64);
-      const audioDataBytes = Math.max(0, wavBytes.length - 44);
-      const durationMs = (audioDataBytes / (24000 * 2)) * 1000;
       let isDone = false;
 
       const finishChunk = () => {
         if (isDone) return;
         isDone = true;
-        // Defer player removal — instant remove clips the hardware buffer.
         FileSystem!.deleteAsync(uri, { idempotent: true }).catch(() => {});
         if (nativePlayerRef.current === player) nativePlayerRef.current = null;
 
@@ -614,8 +606,6 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         playNextFromQueue();
       };
 
-      // didJustFinish is a real ExoPlayer/AVFoundation event (not a timer poll).
-      // It is the primary completion signal; the setTimeout below is a safety net.
       if (player.addListener) {
         player.addListener('playbackStatusUpdate', (status: any) => {
           if (status.didJustFinish || status.error) {
@@ -626,17 +616,51 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
       player.play();
 
-      // Safety-net fallback: fires only if didJustFinish is late or silent.
-      // PLAYER_REMOVAL_PADDING_MS (500 ms) gives realistic slack for system load.
+      // Safety-net fallback
       setTimeout(finishChunk, durationMs + PLAYER_REMOVAL_PADDING_MS);
 
     } catch (err) {
       console.error('[useVoiceSession] native playback error:', err);
       isQueuePlayingRef.current = false;
-      // Try next chunk even if this one failed
-      if (audioQueueRef.current.length > 0) playNextFromQueue();
+      if (preloadedQueueRef.current.length > 0 || audioQueueRef.current.length > 0) {
+        playNextFromQueue();
+      }
     }
   }, []);
+
+  const processPreloadPipeline = useCallback(async () => {
+    if (isPreloadingRef.current || audioQueueRef.current.length === 0 || !FileSystem || !expoAudio) return;
+    isPreloadingRef.current = true;
+    
+    try {
+      while (audioQueueRef.current.length > 0) {
+        const wavBase64 = audioQueueRef.current.shift()!;
+        const uri = FileSystem.cacheDirectory + `gemini_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.wav`;
+        
+        await FileSystem.writeAsStringAsync(uri, wavBase64, {
+          encoding: (FileSystem as any).EncodingType.Base64,
+        });
+
+        const wavBytes = decode(wavBase64);
+        const audioDataBytes = Math.max(0, wavBytes.length - 44);
+        const durationMs = (audioDataBytes / (24000 * 2)) * 1000;
+        
+        // Fire and forget preload — expo-audio will cache the AVPlayer/bytes
+        if (expoAudio && expoAudio.preload) {
+          expoAudio.preload(uri).catch(() => {});
+        }
+        
+        preloadedQueueRef.current.push({ uri, durationMs });
+        
+        // If playback stopped (or hasn't started), kick it off now that we have a playable URI
+        if (!isQueuePlayingRef.current) {
+          playNextFromQueue();
+        }
+      }
+    } finally {
+      isPreloadingRef.current = false;
+    }
+  }, [playNextFromQueue]);
 
   // ── Native: enqueue PCM from Gemini for playback ──────────────────────────
 
@@ -660,13 +684,11 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       // Wrap raw PCM with WAV header so native player can decode it
       const wavBase64 = pcmToWav(combinedPcmBase64);
       audioQueueRef.current.push(wavBase64);
-      if (!isQueuePlayingRef.current) {
-        playNextFromQueue();
-      }
+      processPreloadPipeline();
     } catch (err) {
       console.error('[useVoiceSession] flushPcmBuffer error:', err);
     }
-  }, [playNextFromQueue]);
+  }, [processPreloadPipeline]);
 
   const playNativeAudioChunk = useCallback(async (audioData: string) => {
     if (isMutedRef.current) return;
