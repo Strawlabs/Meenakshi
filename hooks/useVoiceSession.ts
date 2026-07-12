@@ -29,6 +29,8 @@ import { encode, decode, decodeAudioData, pcmToWav, concatPCMBase64 } from '../s
 import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
 import { buildMemoryContext, saveSession, MemoryMessage } from '../services/memoryService';
 import { getLatestSnapshot } from '../services/financialHealthService';
+import { getAllContacts } from '../services/relationshipService';
+import { getFollowUps } from '../services/followUpService';
 import supabase from '../lib/supabase';
 
 // ─── Native-only imports (tree-shaken on web via Platform guard at runtime) ──
@@ -278,11 +280,17 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     const memCtx = await buildMemoryContext().catch(() => '');
     if (memCtx) prompt += `\n\n${memCtx}`;
 
-    // Financial health snapshot
+    // Financial health snapshot + relationship context — run in parallel
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const snapshot = await getLatestSnapshot(user.id).catch(() => null);
+        const [snapshot, contacts, followUps] = await Promise.all([
+          getLatestSnapshot(user.id).catch(() => null),
+          getAllContacts().catch(() => [] as any[]),
+          getFollowUps().catch(() => [] as any[]),
+        ]);
+
+        // Financial block
         if (snapshot) {
           const obligations = (snapshot.upcoming_obligations ?? [])
             .map((o: any) =>
@@ -293,6 +301,37 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           prompt +=
             `\n\nFINANCIAL CONTEXT: ${snapshot.summary ?? 'No summary available.'}` +
             `\n\nUPCOMING OBLIGATIONS:\n${obligations}`;
+        }
+
+        // Relationship block — compact summary only, no per-contact DB calls
+        if (contacts.length > 0) {
+          // Build a pending-follow-ups lookup keyed by contact name for O(1) join
+          const pendingByContact = new Map<string, string[]>();
+          for (const f of followUps) {
+            if (f.status !== 'pending') continue;
+            const name: string = f.contacts?.name ?? 'Unknown';
+            if (!pendingByContact.has(name)) pendingByContact.set(name, []);
+            pendingByContact.get(name)!.push(f.description ?? 'follow up');
+          }
+
+          const top15 = contacts.slice(0, 15); // cap to avoid bloating the system prompt
+          const contactLines = top15.map((c: any) => {
+            const role = [c.designation, c.organization].filter(Boolean).join(' at ') || 'Unknown';
+            const lastSeen = c.updated_at
+              ? new Date(c.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+              : 'Unknown';
+            const pending = pendingByContact.get(c.name);
+            const followUpStr = pending?.length
+              ? ` | Pending: ${pending.slice(0, 2).join('; ')}`
+              : '';
+            return `- ${c.name} (${role}) — last updated ${lastSeen}${followUpStr}`;
+          }).join('\n');
+
+          const pendingCount = followUps.filter((f: any) => f.status === 'pending').length;
+          prompt +=
+            `\n\nRELATIONSHIP CONTEXT: You have access to ${contacts.length} contact(s) in the user's circle.` +
+            (pendingCount > 0 ? ` ${pendingCount} pending follow-up(s) across contacts.` : '') +
+            `\n${contactLines}`;
         }
       }
     } catch (_) {}
