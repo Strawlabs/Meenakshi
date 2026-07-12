@@ -158,6 +158,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     voiceStateRef.current = state;
     setVoiceState(state);
   }, []);
+
   const [userTranscript, setUserTranscript] = useState('');
   const [aiTranscript, setAiTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -219,6 +220,18 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       }
     }
   });
+
+  // iOS AVAudioEngine can sometimes silently pause recording when AI audio playback
+  // finishes or interrupts. This ensures the mic is always awake when we return to listening.
+  useEffect(() => {
+    if (voiceState === 'listening' && isRecordingActiveRef.current && nativeStream) {
+      try {
+        nativeStream.start();
+      } catch (err) {
+        console.warn('[useVoiceSession] Error restarting native stream:', err);
+      }
+    }
+  }, [voiceState, nativeStream]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const setupCompleteRef = useRef(false);
