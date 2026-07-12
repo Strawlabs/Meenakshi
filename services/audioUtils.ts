@@ -66,22 +66,26 @@ export function encode(bytes: Uint8Array): string {
 export function downsampleInt16(bytes: Uint8Array, inputRate: number, outputRate: number): Uint8Array {
   if (inputRate === outputRate || inputRate < outputRate) return bytes;
   
-  // Note: This is a naive decimation algorithm (picking every Nth sample).
-  // It lacks anti-aliasing/low-pass filtering prior to the sample drop, 
-  // so there will be some aliasing artifacts in the audio on 48kHz devices.
-  // We accept this quality trade-off for performance and simplicity here.
   const sampleRatio = inputRate / outputRate;
   const numInputSamples = bytes.length / 2;
   const numOutputSamples = Math.floor(numInputSamples / sampleRatio);
-  const result = new Uint8Array(numOutputSamples * 2);
   
-  let outputIndex = 0;
+  const inputInt16 = new Int16Array(bytes.buffer, bytes.byteOffset, numInputSamples);
+  const resultInt16 = new Int16Array(numOutputSamples);
+  const windowSize = Math.max(1, Math.floor(sampleRatio));
+  
   for (let i = 0; i < numOutputSamples; i++) {
-    const inputIndex = Math.floor(i * sampleRatio) * 2;
-    result[outputIndex++] = bytes[inputIndex];
-    result[outputIndex++] = bytes[inputIndex + 1];
+    const inputIndex = Math.floor(i * sampleRatio);
+    let sum = 0;
+    // Boxcar filter average for anti-aliasing
+    for (let j = 0; j < windowSize; j++) {
+      const idx = Math.min(inputInt16.length - 1, inputIndex + j);
+      sum += inputInt16[idx];
+    }
+    resultInt16[i] = Math.round(sum / windowSize);
   }
-  return result;
+  
+  return new Uint8Array(resultInt16.buffer, resultInt16.byteOffset, resultInt16.byteLength);
 }
 
 // ─── Web: PCM → AudioBuffer ─────────────────────────────────────────────────
