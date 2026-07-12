@@ -333,7 +333,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     }
 
     if (wsRef.current) {
-      try { wsRef.current.close(); } catch (_) {}
+      try { console.trace('[useVoiceSession] ws.close() called from:'); wsRef.current.close(); } catch (_) {}
       wsRef.current = null;
     }
 
@@ -368,7 +368,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     if (Date.now() - lastTurnCompleteRef.current < 2000) return;
     lastTurnCompleteRef.current = Date.now();
 
-    console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
+    console.log('[useVoiceSession] audioStreamEnd sent, waiting for final turnComplete before any close');
+            console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
     try {
       wsRef.current.send(JSON.stringify({
         realtimeInput: { audioStreamEnd: true },
@@ -817,6 +818,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
           // ── Turn complete — save to memory ──
           if (message.serverContent?.turnComplete) {
+            console.log('[useVoiceSession] Received turnComplete from server. Chunks in queue:', audioQueueRef.current.length, 'pcmBuffer bytes:', pcmBufferTotalLengthRef.current);
             // Force flush any remaining audio bytes immediately
             if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
             flushPcmBuffer();
@@ -948,7 +950,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         if (!connectResolved) {
           console.warn(`[useVoiceSession] Handshake timeout for ${modelName}`);
           if (wsRef.current) {
-            try { wsRef.current.close(); } catch (_) {}
+            try { console.trace('[useVoiceSession] ws.close() called from:'); wsRef.current.close(); } catch (_) {}
             wsRef.current = null;
           }
         }
