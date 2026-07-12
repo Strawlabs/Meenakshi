@@ -235,6 +235,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const chunkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nativePlayerRef = useRef<any>(null);
   const isRecordingActiveRef = useRef(false);
+  // Timestamp when the microphone stream actually started (set in setupComplete).
+  // Used by forceTurnComplete to guard against sub-1.5s accidental taps.
+  const recordingStartedAtRef = useRef(0);
 
   // Native audio playback queue
   const audioQueueRef = useRef<string[]>([]); // Array of WAV base64 strings
@@ -389,20 +392,34 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     setError(null);
     setAudioLevel(0);
   }, [cleanupWeb, cleanupNative, persistTurn, setVoiceStateSync]);
-  // ── Manual Turn Complete (force AI response without closing socket) ─────────
+  // ── Manual Stream End ("Stop and answer now" override) ────────────────────
+  //
+  // With automaticActivityDetection enabled, Gemini ends turns on its own
+  // after silence. This function is the explicit user override ("I'm done,
+  // don't wait"). It should only be called after ≥ 1.5 s of mic activity so
+  // an accidental tap right after connecting can't cut off speech instantly.
+  //
+  // Uses realtimeInput.audioStreamEnd — the correct signal for ending a
+  // streaming audio turn. clientContent.turnComplete is for typed text only
+  // and was causing the socket to close.
   const forceTurnComplete = useCallback(() => {
-    if (wsRef.current && setupCompleteRef.current) {
-      if (Date.now() - lastTurnCompleteRef.current < 2000) return;
-      lastTurnCompleteRef.current = Date.now();
+    if (!wsRef.current || !setupCompleteRef.current) return;
 
-      console.log('[useVoiceSession] Forcing turn complete...');
-      try {
-        wsRef.current.send(JSON.stringify({
-          clientContent: { turnComplete: true }
-        }));
-      } catch (err) {
-        console.error('[useVoiceSession] Failed to send turnComplete:', err);
-      }
+    const msSinceRecordingStarted = Date.now() - recordingStartedAtRef.current;
+    if (msSinceRecordingStarted < 1500) {
+      console.log(`[useVoiceSession] audioStreamEnd suppressed — only ${msSinceRecordingStarted}ms of mic activity`);
+      return;
+    }
+    if (Date.now() - lastTurnCompleteRef.current < 2000) return;
+    lastTurnCompleteRef.current = Date.now();
+
+    console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
+    try {
+      wsRef.current.send(JSON.stringify({
+        realtimeInput: { audioStreamEnd: true },
+      }));
+    } catch (err) {
+      console.error('[useVoiceSession] Failed to send audioStreamEnd:', err);
     }
   }, []);
 
@@ -729,6 +746,17 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
               speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_NAME } } },
             },
             systemInstruction: { parts: [{ text: systemPrompt }] },
+            // Gemini detects end-of-speech automatically after ~1 s of silence.
+            // This makes turns end naturally without requiring a button tap.
+            // Low sensitivity avoids cutting off slow/thinking speech mid-sentence.
+            realtimeInputConfig: {
+              automaticActivityDetection: {
+                disabled: false,
+                startOfSpeechSensitivity: 'START_SENSITIVITY_LOW',
+                endOfSpeechSensitivity:   'END_SENSITIVITY_LOW',
+                silenceDurationMs: 1000,
+              },
+            },
           },
         }));
       };
@@ -760,6 +788,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
             } else {
               await startNativeCapture();
             }
+            // Stamp the moment the mic stream actually started so
+            // forceTurnComplete can enforce the 1.5 s minimum-speech guard.
+            recordingStartedAtRef.current = Date.now();
             return;
           }
 
