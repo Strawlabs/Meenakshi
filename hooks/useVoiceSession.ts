@@ -256,7 +256,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const reconnectAttemptsRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gotAnyMessageRef = useRef(false);
   const sessionIdRef = useRef<string | undefined>(undefined);
+  const sessionMessagesRef = useRef<MemoryMessage[]>([]);
   const isMutedRef = useRef(false);
   const turnMessagesRef = useRef<{ userText: string; aiText: string; ts: number } | null>(null);
   const lastTurnCompleteRef = useRef(0);
@@ -310,11 +312,12 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
   const persistTurn = useCallback((userText: string, aiText: string, ts: number) => {
     if (!userText && !aiText) return;
-    const messages: MemoryMessage[] = [
+    const newMessages: MemoryMessage[] = [
       { role: 'user', text: userText || '[Voice input]', timestamp: ts },
       { role: 'model', text: aiText, timestamp: Date.now() },
     ];
-    saveSession(messages, sessionIdRef.current)
+    sessionMessagesRef.current = [...sessionMessagesRef.current, ...newMessages];
+    saveSession(sessionMessagesRef.current, sessionIdRef.current)
       .then(id => { if (!sessionIdRef.current) sessionIdRef.current = id; })
       .catch(err => console.warn('[useVoiceSession] saveSession failed:', err));
   }, []);
@@ -415,10 +418,15 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     lastTurnCompleteRef.current = Date.now();
 
     console.log('[useVoiceSession] audioStreamEnd sent, waiting for final turnComplete before any close');
-            console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
+    console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
+    
+    // Set speech end timestamp for manual interruption latency tracking
+    turnTimingRef.current.userSpeechEndTs = Date.now();
+    turnTimingRef.current.firstAudioByteTs = null;
+
     try {
       wsRef.current.send(JSON.stringify({
-        realtimeInput: { audioStreamEnd: true },
+        clientContent: { turnComplete: true },
       }));
     } catch (err) {
       console.error('[useVoiceSession] Failed to send audioStreamEnd:', err);
