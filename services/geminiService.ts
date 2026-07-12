@@ -24,8 +24,7 @@ const FALLBACK_MODELS = [
   'gemini-3-flash-preview',
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
-  'gemini-flash-lite-latest',
-  'gemini-2.5-flash'
+  'gemini-flash-lite-latest'
 ];
 
 // Request queue chain to execute Gemini requests sequentially
