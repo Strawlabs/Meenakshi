@@ -72,11 +72,11 @@ function utf8BytesToString(bytes: Uint8Array): string {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Fallback chain of Live API models (ordered by capability/priority)
+// Live API model. A single entry — no 2.5-flash variants (20 req/day, confirmed
+// "model not found" in prior testing). Add a gemini-3.x alternative here
+// only after validating on the Live API.
 const LIVE_MODELS = [
-  'gemini-3.1-flash-live-preview',              // Latest, highest capability, recommended
-  'gemini-2.5-flash-preview-native-audio-dialog', // Previous stable
-  'gemini-2.5-flash-native-audio'               // Old stable
+  'gemini-3.1-flash-live-preview',
 ];
 const VOICE_NAME = 'Kore';
 const CHUNK_INTERVAL_MS = 200;        // Native mic chunk recording duration
