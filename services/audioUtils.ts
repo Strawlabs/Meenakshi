@@ -63,6 +63,23 @@ export function encode(bytes: Uint8Array): string {
   return base64;
 }
 
+export function downsampleInt16(bytes: Uint8Array, inputRate: number, outputRate: number): Uint8Array {
+  if (inputRate === outputRate || inputRate < outputRate) return bytes;
+  
+  const sampleRatio = inputRate / outputRate;
+  const numInputSamples = bytes.length / 2;
+  const numOutputSamples = Math.floor(numInputSamples / sampleRatio);
+  const result = new Uint8Array(numOutputSamples * 2);
+  
+  let outputIndex = 0;
+  for (let i = 0; i < numOutputSamples; i++) {
+    const inputIndex = Math.floor(i * sampleRatio) * 2;
+    result[outputIndex++] = bytes[inputIndex];
+    result[outputIndex++] = bytes[inputIndex + 1];
+  }
+  return result;
+}
+
 // ─── Web: PCM → AudioBuffer ─────────────────────────────────────────────────
 
 export async function decodeAudioData(
