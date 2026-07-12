@@ -224,9 +224,27 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   // iOS AVAudioEngine can sometimes silently pause recording when AI audio playback
   // finishes or interrupts. This ensures the mic is always awake when we return to listening.
   useEffect(() => {
-    if (voiceState === 'listening' && isRecordingActiveRef.current && nativeStream) {
+    if (voiceState === 'listening' && isRecordingActiveRef.current && nativeStream && expoAudio) {
       try {
-        nativeStream.start();
+        if (Platform.OS === 'ios') {
+          // Hard restart on iOS to recover the AVAudioEngine node
+          nativeStream.stop();
+          setTimeout(async () => {
+            if (voiceStateRef.current === 'listening') {
+              try {
+                await (expoAudio as any).AudioModule.setAudioModeAsync({
+                  allowsRecording: true,
+                  playsInSilentMode: true,
+                });
+                nativeStream.start();
+              } catch (e) {
+                console.warn('[useVoiceSession] Error in iOS stream restart:', e);
+              }
+            }
+          }, 100);
+        } else {
+          nativeStream.start();
+        }
       } catch (err) {
         console.warn('[useVoiceSession] Error restarting native stream:', err);
       }
