@@ -130,7 +130,9 @@ export default function VoiceScreen() {
   const handleMic = async () => {
     if (!isActive) {
       await startSession();
-    } else if (voiceState === 'speaking') {
+    } else if (voiceState === 'listening') {
+      forceTurnComplete();
+    } else if (voiceState === 'speaking' || voiceState === 'processing') {
       interrupt();
     }
   };
