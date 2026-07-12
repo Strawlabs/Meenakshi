@@ -531,8 +531,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
       player.play();
 
-      // Safety-net fallback
-      setTimeout(finishChunk, durationMs + PLAYER_REMOVAL_PADDING_MS);
+      // Safety-net fallback (very generous padding to prevent cutting off audio early on slow devices)
+      setTimeout(finishChunk, durationMs + 2000);
 
     } catch (err) {
       console.error('[useVoiceSession] native playback error:', err);
@@ -805,6 +805,12 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
             if (turnMessagesRef.current) {
               turnMessagesRef.current.aiText += outputTranscript;
             }
+          }
+
+          // Track end of user speech for latency metrics
+          if (message.serverContent?.audioStreamEnd || (message.serverContent as any)?.activityEnd) {
+            turnTimingRef.current.userSpeechEndTs = Date.now();
+            turnTimingRef.current.firstAudioByteTs = null;
           }
 
           // ── User input transcript ──
