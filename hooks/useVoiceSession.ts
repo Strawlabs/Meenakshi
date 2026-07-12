@@ -86,6 +86,19 @@ const RECONNECT_DELAY_MS = 2000;
 const RATE_LIMIT_RETRY_MS = 60000;
 const SYSTEM_PROMPT_CACHE_MS = 5 * 60 * 1000; // 5 minutes
 
+// ─── Native audio buffering thresholds ───────────────────────────────────────
+// Asymmetric strategy: first chunk flushes fast (time-to-first-word),
+// subsequent chunks buffer longer (fewer file I/O round-trips = fewer gaps).
+// 24 kHz · 16-bit mono = 48 000 bytes/s of raw PCM.
+const FIRST_CHUNK_THRESHOLD_BYTES = 96_000;      // ~2 s — fast first word
+const SUBSEQUENT_CHUNK_THRESHOLD_BYTES = 216_000; // ~4.5 s — close mid-sentence gaps
+const FIRST_CHUNK_FLUSH_MS = 600;                // Short-response safety flush
+const SUBSEQUENT_CHUNK_FLUSH_MS = 1_500;         // Wider window for longer segments
+// Fallback padding added to computed audio duration when scheduling finishChunk.
+// 500 ms is enough hardware-buffer slack; reduce further only after on-device
+// confirmation that didJustFinish is reliably on-time across OEM Android skins.
+const PLAYER_REMOVAL_PADDING_MS = 500;
+
 // ─── Module-level system prompt cache ────────────────────────────────────────
 // Shared across all hook instances. Only rebuilt after SYSTEM_PROMPT_CACHE_MS.
 let _cachedSystemPrompt: string | null = null;
@@ -229,6 +242,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const pcmBufferRef = useRef<string[]>([]); // Array of raw PCM base64 strings
   const pcmBufferTotalLengthRef = useRef(0);
   const pcmFlushTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // true until the first PCM flush of each AI turn — controls asymmetric threshold
+  const isFirstChunkOfTurnRef = useRef(true);
 
   // ── Mute sync ──────────────────────────────────────────────────────────────
   const toggleMute = useCallback(() => {
@@ -510,19 +525,20 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         encoding: (FileSystem as any).EncodingType.Base64,
       });
 
-      // Remove previous player on a slight delay to allow hardware buffers to flush
-      // and prevent clipping the ends of words
+      // Defer old-player removal to allow hardware audio buffer to drain.
+      // 500 ms is enough for virtually all devices; reduce only after on-device
+      // confirmation that no tail-clipping occurs on budget Android.
       if (nativePlayerRef.current) {
         const oldPlayer = nativePlayerRef.current;
         setTimeout(() => {
           try { oldPlayer.remove(); } catch (_) {}
-        }, 1000);
+        }, PLAYER_REMOVAL_PADDING_MS);
       }
 
       const player = (expoAudio as any).createAudioPlayer({ uri });
       nativePlayerRef.current = player;
 
-      // Estimate duration as a fallback timeout (duration + 1000ms buffer)
+      // Compute audio duration from WAV payload length for the fallback timeout.
       const wavBytes = decode(wavBase64);
       const audioDataBytes = Math.max(0, wavBytes.length - 44);
       const durationMs = (audioDataBytes / (24000 * 2)) * 1000;
@@ -531,20 +547,19 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       const finishChunk = () => {
         if (isDone) return;
         isDone = true;
-        // Do NOT instantly remove the player here. It clips the hardware buffer!
-        // We defer removal to the next chunk or via timeout.
+        // Defer player removal — instant remove clips the hardware buffer.
         FileSystem!.deleteAsync(uri, { idempotent: true }).catch(() => {});
         if (nativePlayerRef.current === player) nativePlayerRef.current = null;
-        
-        // Remove the player safely after a delay
+
         setTimeout(() => {
           try { player.remove(); } catch (_) {}
-        }, 1000);
+        }, PLAYER_REMOVAL_PADDING_MS);
 
-        playNextFromQueue(); // Play next chunk in queue
+        playNextFromQueue();
       };
 
-      // Native event listener for smooth gapless playback
+      // didJustFinish is a real ExoPlayer/AVFoundation event (not a timer poll).
+      // It is the primary completion signal; the setTimeout below is a safety net.
       if (player.addListener) {
         player.addListener('playbackStatusUpdate', (status: any) => {
           if (status.didJustFinish || status.error) {
@@ -555,8 +570,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
       player.play();
 
-      // Fallback timeout in case the event fails to fire
-      setTimeout(finishChunk, durationMs + 1000);
+      // Safety-net fallback: fires only if didJustFinish is late or silent.
+      // PLAYER_REMOVAL_PADDING_MS (500 ms) gives realistic slack for system load.
+      setTimeout(finishChunk, durationMs + PLAYER_REMOVAL_PADDING_MS);
 
     } catch (err) {
       console.error('[useVoiceSession] native playback error:', err);
@@ -576,6 +592,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     }
 
     try {
+      // Mark that the first chunk of this turn has been flushed.
+      // Subsequent chunks within the same turn use the larger buffer threshold.
+      isFirstChunkOfTurnRef.current = false;
+
       // Concatenate all small PCM chunks into one large PCM chunk
       const combinedPcmBase64 = concatPCMBase64(pcmBufferRef.current);
       pcmBufferRef.current = [];
@@ -594,24 +614,30 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
   const playNativeAudioChunk = useCallback(async (audioData: string) => {
     if (isMutedRef.current) return;
-    
-    // Add raw PCM chunk to JS buffer
+
+    // Accumulate raw PCM chunk
     pcmBufferRef.current.push(audioData);
-    
-    // Calculate approximate byte length (base64 length * 0.75)
     pcmBufferTotalLengthRef.current += Math.floor(audioData.length * 0.75);
 
-    // If we have accumulated ~1.5 seconds of audio (72,000 bytes at 24kHz 16-bit mono), flush it!
-    // This reduces the number of WAV files and AudioPlayers created, stopping overhead stuttering.
-    if (pcmBufferTotalLengthRef.current >= 72000) {
+    // Asymmetric threshold:
+    //   First chunk of a turn → flush at ~2 s to minimise time-to-first-word.
+    //   Subsequent chunks     → flush at ~4.5 s to reduce file-I/O / player-
+    //                           instantiation overhead between sentences.
+    const threshold = isFirstChunkOfTurnRef.current
+      ? FIRST_CHUNK_THRESHOLD_BYTES
+      : SUBSEQUENT_CHUNK_THRESHOLD_BYTES;
+    const flushMs = isFirstChunkOfTurnRef.current
+      ? FIRST_CHUNK_FLUSH_MS
+      : SUBSEQUENT_CHUNK_FLUSH_MS;
+
+    if (pcmBufferTotalLengthRef.current >= threshold) {
       if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
       flushPcmBuffer();
     } else {
-      // Otherwise, set a timeout to flush whatever we have in 600ms
       if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
       pcmFlushTimeoutRef.current = setTimeout(() => {
         flushPcmBuffer();
-      }, 600);
+      }, flushMs);
     }
   }, [flushPcmBuffer]);
 
@@ -784,6 +810,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
             if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
             flushPcmBuffer();
 
+            // Reset to first-chunk mode so the NEXT AI turn starts with fast buffering
+            isFirstChunkOfTurnRef.current = true;
+
             if (isQueuePlayingRef.current || (Platform.OS === 'web' && sourcesRef.current.size > 0)) {
               turnCompletePendingRef.current = true;
             } else {
@@ -815,6 +844,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
                 try { nativePlayerRef.current.remove(); } catch (_) {}
                 nativePlayerRef.current = null;
               }
+              // Reset to first-chunk mode so the next AI response starts fast
+              isFirstChunkOfTurnRef.current = true;
             }
             setVoiceStateSync('listening');
           }
