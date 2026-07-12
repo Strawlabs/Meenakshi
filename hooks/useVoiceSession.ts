@@ -26,12 +26,8 @@ import { Platform } from 'react-native';
 // @ts-ignore
 import { GoogleGenAI, Modality } from '@google/genai';
 import { encode, decode, decodeAudioData, pcmToWav, concatPCMBase64 } from '../services/audioUtils';
-import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
-import { buildMemoryContext, saveSession, MemoryMessage } from '../services/memoryService';
-import { getLatestSnapshot } from '../services/financialHealthService';
-import { getAllContacts } from '../services/relationshipService';
-import { getFollowUps } from '../services/followUpService';
-import supabase from '../lib/supabase';
+import { saveSession, MemoryMessage } from '../services/memoryService';
+import { buildSystemPrompt } from '../services/systemPromptService';
 
 // ─── Native-only imports (tree-shaken on web via Platform guard at runtime) ──
 let expoAudio: typeof import('expo-audio') | null = null;
@@ -219,6 +215,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const turnMessagesRef = useRef<{ userText: string; aiText: string; ts: number } | null>(null);
   const lastTurnCompleteRef = useRef(0);
   const turnCompletePendingRef = useRef(false);
+  const turnTimingRef = useRef<{ userSpeechEndTs: number | null; firstAudioByteTs: number | null }>({
+    userSpeechEndTs: null,
+    firstAudioByteTs: null,
+  });
   
   // Model Fallback Refs
   const modelIndexRef = useRef(0);
@@ -259,92 +259,6 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       return !prev;
     });
   }, []);
-
-  // ── System prompt builder ─────────────────────────────────────────────────
-
-  const buildSystemPrompt = async (): Promise<string> => {
-    // Return cached prompt if it's less than 5 minutes old
-    if (_cachedSystemPrompt && (Date.now() - _cachedSystemPromptAt) < SYSTEM_PROMPT_CACHE_MS) {
-      console.log('[useVoiceSession] Using cached system prompt');
-      return _cachedSystemPrompt;
-    }
-
-    console.log('[useVoiceSession] Building system prompt (cache miss)...');
-    const today = new Date().toLocaleDateString('en-IN', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    });
-
-    let prompt = MEENAKSHI_SYSTEM_PROMPT
-      + `\n\nTODAY'S DATE: ${today}`
-      + LANGUAGE_INSTRUCTION;
-
-    // Memory context (last 3 sessions)
-    const memCtx = await buildMemoryContext().catch(() => '');
-    if (memCtx) prompt += `\n\n${memCtx}`;
-
-    // Financial health snapshot + relationship context — run in parallel
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const [snapshot, contacts, followUps] = await Promise.all([
-          getLatestSnapshot(user.id).catch(() => null),
-          getAllContacts().catch(() => [] as any[]),
-          getFollowUps().catch(() => [] as any[]),
-        ]);
-
-        // Financial block
-        if (snapshot) {
-          const obligations = (snapshot.upcoming_obligations ?? [])
-            .map((o: any) =>
-              `- ${o.description ?? o.subject ?? o.category} due ${o.due_date} (₹${o.amount ?? 0})`
-            )
-            .join('\n') || 'None';
-
-          prompt +=
-            `\n\nFINANCIAL CONTEXT: ${snapshot.summary ?? 'No summary available.'}` +
-            `\n\nUPCOMING OBLIGATIONS:\n${obligations}`;
-        }
-
-        // Relationship block — compact summary only, no per-contact DB calls
-        if (contacts.length > 0) {
-          // Build a pending-follow-ups lookup keyed by contact name for O(1) join
-          const pendingByContact = new Map<string, string[]>();
-          for (const f of followUps) {
-            if (f.status !== 'pending') continue;
-            const name: string = f.contacts?.name ?? 'Unknown';
-            if (!pendingByContact.has(name)) pendingByContact.set(name, []);
-            pendingByContact.get(name)!.push(f.description ?? 'follow up');
-          }
-
-          const top15 = contacts.slice(0, 15); // cap to avoid bloating the system prompt
-          const contactLines = top15.map((c: any) => {
-            const role = [c.designation, c.organization].filter(Boolean).join(' at ') || 'Unknown';
-            const lastSeen = c.updated_at
-              ? new Date(c.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-              : 'Unknown';
-            const pending = pendingByContact.get(c.name);
-            const followUpStr = pending?.length
-              ? ` | Pending: ${pending.slice(0, 2).join('; ')}`
-              : '';
-            return `- ${c.name} (${role}) — last updated ${lastSeen}${followUpStr}`;
-          }).join('\n');
-
-          const pendingCount = followUps.filter((f: any) => f.status === 'pending').length;
-          prompt +=
-            `\n\nRELATIONSHIP CONTEXT: You have access to ${contacts.length} contact(s) in the user's circle.` +
-            (pendingCount > 0 ? ` ${pendingCount} pending follow-up(s) across contacts.` : '') +
-            `\n${contactLines}`;
-        }
-      }
-    } catch (_) {}
-
-    // Store in module-level cache
-    _cachedSystemPrompt = prompt;
-    _cachedSystemPromptAt = Date.now();
-    console.log('[useVoiceSession] System prompt cached.');
-
-    return prompt;
-  };
 
   // ── Memory save ────────────────────────────────────────────────────────────
 
@@ -860,6 +774,11 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           // ── Audio data from Gemini ──
           const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
           if (audioData) {
+            if (turnTimingRef.current.userSpeechEndTs && !turnTimingRef.current.firstAudioByteTs) {
+              turnTimingRef.current.firstAudioByteTs = Date.now();
+              const latencyMs = turnTimingRef.current.firstAudioByteTs - turnTimingRef.current.userSpeechEndTs;
+              console.log(`[LATENCY] Time-to-first-audio-byte: ${latencyMs}ms`);
+            }
             setVoiceStateSync('speaking');
             if (Platform.OS === 'web') {
               await playWebAudioChunk(audioData);

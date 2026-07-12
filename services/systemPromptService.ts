@@ -1,0 +1,102 @@
+import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
+import { buildMemoryContext } from './memoryService';
+import { getLatestSnapshot } from './financialHealthService';
+import { getAllContacts } from './relationshipService';
+import { getFollowUps } from './followUpService';
+import supabase from '../lib/supabase';
+
+const SYSTEM_PROMPT_CACHE_MS = 5 * 60 * 1000;
+let _cachedSystemPrompt: string | null = null;
+let _cachedSystemPromptAt = 0;
+
+const LANGUAGE_INSTRUCTION = `
+LANGUAGE DETECTION:
+Detect the language the user is speaking and respond naturally in the same language.
+- If English → respond in clear, warm English
+- If Tamil or Tanglish → respond naturally in Tanglish
+- If Hindi → respond in simple Hindi with English financial terms
+Never announce that you are switching languages. Just switch naturally.`;
+
+export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
+  if (!forceRefresh && _cachedSystemPrompt && (Date.now() - _cachedSystemPromptAt) < SYSTEM_PROMPT_CACHE_MS) {
+    return _cachedSystemPrompt;
+  }
+
+  console.log('[systemPromptService] Building system prompt (cache miss)...');
+  const today = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
+  let prompt = MEENAKSHI_SYSTEM_PROMPT
+    + `\n\nTODAY'S DATE: ${today}`
+    + LANGUAGE_INSTRUCTION;
+
+  // Memory context (last 3 sessions)
+  const memCtx = await buildMemoryContext().catch(() => '');
+  if (memCtx) prompt += `\n\n${memCtx}`;
+
+  // Financial health snapshot + relationship context — run in parallel
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const [snapshot, contacts, followUps] = await Promise.all([
+        getLatestSnapshot(user.id).catch(() => null),
+        getAllContacts().catch(() => [] as any[]),
+        getFollowUps().catch(() => [] as any[]),
+      ]);
+
+      // Financial block
+      if (snapshot) {
+        const obligations = (snapshot.upcoming_obligations ?? [])
+          .map((o: any) =>
+            `- ${o.description ?? o.subject ?? o.category} due ${o.due_date} (₹${o.amount ?? 0})`
+          )
+          .join('\n') || 'None';
+
+        prompt +=
+          `\n\nFINANCIAL CONTEXT: ${snapshot.summary ?? 'No summary available.'}` +
+          `\n\nUPCOMING OBLIGATIONS:\n${obligations}`;
+      }
+
+      // Relationship block — compact summary only, no per-contact DB calls
+      if (contacts.length > 0) {
+        // Build a pending-follow-ups lookup keyed by contact name for O(1) join
+        const pendingByContact = new Map<string, string[]>();
+        for (const f of followUps) {
+          if (f.status !== 'pending') continue;
+          const name: string = f.contacts?.name ?? 'Unknown';
+          if (!pendingByContact.has(name)) pendingByContact.set(name, []);
+          pendingByContact.get(name)!.push(f.description ?? 'follow up');
+        }
+
+        const top15 = contacts.slice(0, 15); // cap to avoid bloating the system prompt
+        const contactLines = top15.map((c: any) => {
+          const role = [c.designation, c.organization].filter(Boolean).join(' at ') || 'Unknown';
+          const lastSeen = c.updated_at
+            ? new Date(c.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+            : 'Unknown';
+          const pending = pendingByContact.get(c.name);
+          const followUpStr = pending?.length
+            ? ` | Pending: ${pending.slice(0, 2).join('; ')}`
+            : '';
+          return `- ${c.name} (${role}) — last updated ${lastSeen}${followUpStr}`;
+        }).join('\n');
+
+        const pendingCount = followUps.filter((f: any) => f.status === 'pending').length;
+        prompt +=
+          `\n\nRELATIONSHIP CONTEXT: You have access to ${contacts.length} contact(s) in the user's circle.` +
+          (pendingCount > 0 ? ` ${pendingCount} pending follow-up(s) across contacts.` : '') +
+          `\n${contactLines}`;
+      }
+    }
+  } catch (_) {}
+
+  _cachedSystemPrompt = prompt;
+  _cachedSystemPromptAt = Date.now();
+  console.log('[systemPromptService] System prompt cached.');
+  return prompt;
+}
+
+export function invalidateSystemPromptCache() {
+  _cachedSystemPrompt = null;
+}

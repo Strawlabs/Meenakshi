@@ -18,7 +18,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { generateGeminiContent } from '../services/geminiService';
 import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
-import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
+import { buildSystemPrompt } from '../services/systemPromptService';
 import {
   saveSession,
   buildMemoryContext,
@@ -150,43 +150,16 @@ export default function ChatScreen() {
         );
       }
 
-      // Build enriched system prompt with memory and email contexts
-      const memCtx = await buildMemoryContext();
-      const emailCtx = await buildEmailContext();
+      // Build enriched system prompt from the centralized service
+      let enrichedSystemPrompt = await buildSystemPrompt();
       
-      // Third context fetch: User's financial snapshot and last 10 email events
-      let financialContext = '';
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const snapshot = await getLatestSnapshot(user.id);
-        const healthSummary = snapshot?.summary || 'No summary available.';
-        const obligations = snapshot?.upcoming_obligations || [];
-        
-        const obligationsStr = obligations.length > 0
-          ? obligations.map((o: any) => `- ${o.description || o.subject || o.category} due ${o.due_date} (₹${o.amount || '0'})`).join('\n')
-          : 'None';
-
-        const { data: historyEvents } = await supabase
-          .from('email_events')
-          .select('received_at, category, amount, ai_summary, sender_name, entity_email_links(entities(name))')
-          .eq('user_id', user.id)
-          .order('received_at', { ascending: false })
-          .limit(10);
-        
-        let eventsStr = 'None';
-        if (historyEvents && historyEvents.length > 0) {
-          eventsStr = historyEvents.map((e: any) => {
-            const dateStr = new Date(e.received_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-            const amountStr = e.amount ? e.amount : '0';
-            const entityStr = e.entity_email_links?.[0]?.entities?.name || e.sender_name || 'Unknown Entity';
-            return `- [${dateStr}] [${e.category}] [${entityStr}]: ₹${amountStr} — [${e.ai_summary || ''}]`;
-          }).join('\n');
-        }
-
-        financialContext = `FINANCIAL CONTEXT: ${healthSummary}\n\nUPCOMING OBLIGATIONS:\n${obligationsStr}\n\nRECENT FINANCIAL EVENTS:\n${eventsStr}`;
+      // Chat-specific context extensions
+      const emailCtx = await buildEmailContext();
+      if (emailCtx) {
+        enrichedSystemPrompt += `\n\n${emailCtx}`;
       }
 
-      // Fourth context: active document (if launched from DocumentDetailScreen or uploaded in chat)
+      // Active document (if launched from DocumentDetailScreen or uploaded in chat)
       let documentContext = '';
       const documentId = activeDocumentId;
       if (documentId) {
@@ -199,36 +172,20 @@ SUMMARY: ${doc.summary || 'No summary available.'}
 KEY DATES: ${JSON.stringify(doc.key_dates || [])}
 OBLIGATIONS: ${JSON.stringify(doc.obligations || [])}
 RAW TEXT (truncated):\n${rawText}`;
+          enrichedSystemPrompt += `\n\n${documentContext}`;
         }
       }
 
-      // Fifth context: recent documents (if no specific active document)
-      let recentDocumentsContext = '';
+      // Recent documents (if no specific active document)
+      const { data: { user } } = await supabase.auth.getUser();
       if (!documentId && user) {
         const recentDocs = await getUserDocuments(user.id);
         const topDocs = recentDocs.slice(0, 3);
         if (topDocs.length > 0) {
-          recentDocumentsContext = `RECENT UPLOADED DOCUMENTS (for budget planning and general context):
+          const recentDocumentsContext = `RECENT UPLOADED DOCUMENTS (for budget planning and general context):
 ${topDocs.map((doc: Document) => `- [${doc.file_name}] (${doc.document_type}): ${doc.summary || 'No summary'} | Obligations: ${JSON.stringify(doc.obligations || [])}`).join('\n')}`;
+          enrichedSystemPrompt += `\n\n${recentDocumentsContext}`;
         }
-      }
-
-      let enrichedSystemPrompt = MEENAKSHI_SYSTEM_PROMPT;
-      enrichedSystemPrompt += `\n\nTODAY'S DATE: ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (current system time). Always evaluate timeline event dues relative to this date.`;
-      if (memCtx) {
-        enrichedSystemPrompt += `\n\n${memCtx}`;
-      }
-      if (emailCtx) {
-        enrichedSystemPrompt += `\n\n${emailCtx}`;
-      }
-      if (financialContext) {
-        enrichedSystemPrompt += `\n\n${financialContext}`;
-      }
-      if (documentContext) {
-        enrichedSystemPrompt += `\n\n${documentContext}`;
-      }
-      if (recentDocumentsContext) {
-        enrichedSystemPrompt += `\n\n${recentDocumentsContext}`;
       }
 
       let responseText = '';
