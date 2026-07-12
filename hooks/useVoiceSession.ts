@@ -184,11 +184,20 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         if (isBase64) {
           b64 = buffer.data;
         } else {
-          let bytes = buffer.data instanceof ArrayBuffer 
-            ? new Uint8Array(buffer.data)
-            : buffer.data instanceof Uint8Array 
-            ? buffer.data 
-            : new Uint8Array(buffer.data);
+          let bytes: Uint8Array;
+          if (buffer.data instanceof ArrayBuffer) {
+            bytes = new Uint8Array(buffer.data);
+          } else if (buffer.data?.buffer instanceof ArrayBuffer) {
+            bytes = new Uint8Array(buffer.data.buffer, buffer.data.byteOffset, buffer.data.byteLength);
+          } else if (Array.isArray(buffer.data)) {
+            bytes = new Uint8Array(buffer.data.length * 2);
+            const view = new DataView(bytes.buffer);
+            for (let i = 0; i < buffer.data.length; i++) {
+              view.setInt16(i * 2, buffer.data[i], true);
+            }
+          } else {
+            bytes = new Uint8Array(buffer.data);
+          }
           
           if (buffer.sampleRate && buffer.sampleRate > 16000) {
             bytes = downsampleInt16(bytes, buffer.sampleRate, 16000);
