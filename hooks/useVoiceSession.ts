@@ -25,7 +25,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Platform } from 'react-native';
 // @ts-ignore
 import { GoogleGenAI, Modality } from '@google/genai';
-import { encode, decode, decodeAudioData, pcmToWav, concatPCMBase64 } from '../services/audioUtils';
+import { encode, decode, decodeAudioData, pcmToWav, concatPCMBase64, downsampleInt16 } from '../services/audioUtils';
 import { saveSession, MemoryMessage } from '../services/memoryService';
 import { buildSystemPrompt } from '../services/systemPromptService';
 
@@ -184,11 +184,16 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         if (isBase64) {
           b64 = buffer.data;
         } else {
-          const bytes = buffer.data instanceof ArrayBuffer 
+          let bytes = buffer.data instanceof ArrayBuffer 
             ? new Uint8Array(buffer.data)
             : buffer.data instanceof Uint8Array 
             ? buffer.data 
             : new Uint8Array(buffer.data);
+          
+          if (buffer.sampleRate && buffer.sampleRate > 16000) {
+            bytes = downsampleInt16(bytes, buffer.sampleRate, 16000);
+          }
+          
           b64 = encode(bytes);
         }
         
@@ -196,14 +201,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         if (Math.random() < 0.05) {
           console.log(`[AudioStream] Sending chunk. IsBase64=${isBase64}, byteLength=${byteLen}, b64=${b64.substring(0, 30)}...`);
         }
-        const rate = buffer.sampleRate || 16000;
+        
         wsRef.current.send(JSON.stringify({
-          realtimeInput: {
-            mediaChunks: [{
-              mimeType: `audio/pcm;rate=${rate}`,
-              data: b64,
-            }]
-          }
+          realtimeInput: { audio: { data: b64, mimeType: 'audio/pcm;rate=16000' } },
         }));
       } catch (err) {
         console.error('[AudioStream] Error encoding buffer:', err);
