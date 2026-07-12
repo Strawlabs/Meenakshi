@@ -196,9 +196,14 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         if (Math.random() < 0.05) {
           console.log(`[AudioStream] Sending chunk. IsBase64=${isBase64}, byteLength=${byteLen}, b64=${b64.substring(0, 30)}...`);
         }
-        
+        const rate = buffer.sampleRate || 16000;
         wsRef.current.send(JSON.stringify({
-          realtimeInput: { audio: { data: b64, mimeType: 'audio/pcm;rate=16000' } },
+          realtimeInput: {
+            mediaChunks: [{
+              mimeType: `audio/pcm;rate=${rate}`,
+              data: b64,
+            }]
+          }
         }));
       } catch (err) {
         console.error('[AudioStream] Error encoding buffer:', err);
