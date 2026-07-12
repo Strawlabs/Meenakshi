@@ -81,6 +81,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   const ambientGlow = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
+    navigation.replace('Voice');
     // Orb breathe
     Animated.loop(
       Animated.sequence([

@@ -1,17 +1,14 @@
 /**
  * VoiceScreen.tsx
  *
- * Platform behavior:
- *   - Web:            useVoiceSession hook → Gemini Live WebSocket bidirectional audio
- *   - iOS / Android:  expo-audio record → Gemini REST (gemini-3-flash-preview) → expo-speech TTS
+ * All platforms (Web, iOS, Android) now use useVoiceSession hook
+ * which connects to Gemini Live API (gemini-3.1-flash-live-preview, v1alpha)
+ * with Kore voice — real audio in, real audio out.
  *
- * Key guards:
- *   - isStoppingRef prevents double-stop crashes on Android
- *   - 800 ms flush wait + size polling before reading the audio file
- *   - All file I/O via 'expo-file-system/legacy' (NOT 'expo-file-system')
+ * No expo-speech. No REST pipeline. One path for all platforms.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,36 +22,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import {
-  useAudioRecorder,
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-} from 'expo-audio';
-import * as Speech from 'expo-speech';
-import * as FileSystem from 'expo-file-system/legacy';
-import { GoogleGenAI } from '@google/genai';
 
 import { Colors, Spacing, Radius, Typography } from '../constants/theme';
-import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
-import {
-  buildMemoryContext,
-  saveSession,
-  MemoryMessage,
-} from '../services/memoryService';
-import { getLatestSnapshot } from '../services/financialHealthService';
-import supabase from '../lib/supabase';
-
-// ─── Web-only import (tree-shaken on native) ────────────────────────────────
-
-let useVoiceSession: (() => any) | null = null;
-if (Platform.OS === 'web') {
-  useVoiceSession = require('../hooks/useVoiceSession').useVoiceSession;
-}
+import { useVoiceSession } from '../hooks/useVoiceSession';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const GEMINI_MODEL = 'gemini-3-flash-preview';
 
 const QUICK_CHIPS = [
   'What bills are due?',
@@ -63,33 +35,26 @@ const QUICK_CHIPS = [
   'What did we discuss last time?',
 ];
 
-type VoiceState = 'idle' | 'recording' | 'processing' | 'speaking';
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function VoiceScreen() {
   const navigation = useNavigation();
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
-  const [userText, setUserText] = useState('Tap the mic to speak');
-  const [modelText, setModelText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  // ── Refs ───────────────────────────────────────────────────────────────────
-  const isStoppingRef = useRef<boolean>(false);
-  const recordingStopTimeRef = useRef<number>(0);
-  const sessionIdRef = useRef<string | undefined>(undefined);
-
-  // ── Native recorder ────────────────────────────────────────────────────────
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-
-  // ── Web session (no-op on native) ──────────────────────────────────────────
-  const webSession =
-    Platform.OS === 'web' && useVoiceSession ? useVoiceSession() : null;
-
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const isActive = voiceState !== 'idle';
+  // ── Voice session (all platforms) ─────────────────────────────────────────
+  const session = useVoiceSession();
+  const {
+    voiceState,
+    isActive,
+    userTranscript,
+    aiTranscript,
+    error,
+    isMuted,
+    startSession,
+    stopSession,
+    forceTurnComplete,
+    sendText,
+    toggleMute,
+  } = session;
 
   // ── Animations ─────────────────────────────────────────────────────────────
   const orbScale = useRef(new Animated.Value(1)).current;
@@ -156,331 +121,80 @@ export default function VoiceScreen() {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      Speech.stop();
-      if (recorder?.isRecording) {
-        try { recorder.stop(); } catch (_) {}
-      }
-    };
+    return () => { stopSession(); };
   }, []);
 
-  // ── System prompt builder ──────────────────────────────────────────────────
-
-  const buildSystemPrompt = async (): Promise<string> => {
-    const today = new Date().toLocaleDateString('en-IN', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    });
-
-    let prompt = MEENAKSHI_SYSTEM_PROMPT + `\n\nTODAY'S DATE: ${today}`;
-
-    const memCtx = await buildMemoryContext().catch(() => '');
-    if (memCtx) prompt += `\n\n${memCtx}`;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const snapshot = await getLatestSnapshot(user.id).catch(() => null);
-        if (snapshot) {
-          const obligations = (snapshot.upcoming_obligations ?? [])
-            .map((o: any) =>
-              `- ${o.description ?? o.subject ?? o.category} due ${o.due_date} (₹${o.amount ?? 0})`
-            )
-            .join('\n') || 'None';
-
-          prompt +=
-            `\n\nFINANCIAL CONTEXT: ${snapshot.summary ?? 'No summary available.'}` +
-            `\n\nUPCOMING OBLIGATIONS:\n${obligations}`;
-        }
-      }
-    } catch (_) {}
-
-    return prompt;
-  };
-
-  // ── TTS helper ────────────────────────────────────────────────────────────
-
-  const speak = (text: string) => {
-    setModelText(text);
-    setVoiceState('speaking');
-    Speech.speak(text, {
-      language: 'en-IN',
-      rate: 0.95,
-      pitch: 1.05,
-      onDone: () => setVoiceState('idle'),
-      onError: () => setVoiceState('idle'),
-    });
-  };
-
-  // ── Gemini REST call (shared for voice + text chips) ──────────────────────
-
-  const callGemini = async (
-    content: { text?: string; audioBase64?: string; mimeType?: string }
-  ): Promise<string> => {
-    const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) throw new Error('API key missing — set EXPO_PUBLIC_GEMINI_API_KEY in .env');
-
-    const ai = new GoogleGenAI({ apiKey });
-    const systemPrompt = await buildSystemPrompt();
-
-    let parts: any[];
-    if (content.audioBase64 && content.mimeType) {
-      parts = [{ inlineData: { mimeType: content.mimeType, data: content.audioBase64 } }];
-    } else {
-      parts = [{ text: content.text ?? '' }];
-    }
-
-    const result = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      config: { systemInstruction: systemPrompt },
-      contents: [{ role: 'user', parts }],
-    });
-
-    return result.text ?? 'Illa pa, I could not understand that. Try again da.';
-  };
-
-  // ── Save exchange to memory ───────────────────────────────────────────────
-
-  const saveToMemory = (userMsg: string, aiMsg: string, userTs: number) => {
-    const mem: MemoryMessage[] = [
-      { role: 'user', text: userMsg, timestamp: userTs },
-      { role: 'model', text: aiMsg, timestamp: Date.now() },
-    ];
-    saveSession(mem, sessionIdRef.current)
-      .then(id => { if (!sessionIdRef.current) sessionIdRef.current = id; })
-      .catch(err => console.warn('[VoiceScreen] saveSession failed:', err));
-  };
-
-  // ── Native: start recording ───────────────────────────────────────────────
-
-  const startNativeRecording = async () => {
-    setError(null);
-    Speech.stop();
-
-    const perm = await requestRecordingPermissionsAsync();
-    if (!perm.granted) {
-      setError('Please allow microphone access in Settings.');
-      return;
-    }
-
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    await recorder.record();
-
-    setVoiceState('recording');
-    setUserText('Listening… tap again to send');
-    setModelText('');
-  };
-
-  // ── Native: stop recording + process ──────────────────────────────────────
-
-  const stopNativeSession = async () => {
-    // Guard: prevent double-stop
-    if (isStoppingRef.current) return;
-    isStoppingRef.current = true;
-
-    try {
-      if (!recorder.isRecording) {
-        setVoiceState('idle');
-        return;
-      }
-
-      recordingStopTimeRef.current = Date.now();
-      await recorder.stop();
-
-      const uri = recorder.uri;
-      setVoiceState('processing');
-      setUserText('Processing your voice…');
-
-      if (!uri) {
-        setError('Recording failed. Please try again.');
-        setVoiceState('idle');
-        return;
-      }
-
-      console.log('[VoiceScreen] Recording URI:', uri);
-
-      // Android needs time to flush file to disk
-      await new Promise(r => setTimeout(r, 800));
-
-      // Poll until file is ready (max 5 s)
-      let info: FileSystem.FileInfo | undefined;
-      for (let i = 0; i < 20; i++) {
-        info = await FileSystem.getInfoAsync(uri);
-        const size = info.exists ? (info as any).size ?? 0 : 0;
-        console.log(`[VoiceScreen] File poll ${i}: exists=${info.exists}, size=${size}`);
-        if (info.exists && size > 1000) break;
-        await new Promise(r => setTimeout(r, 250));
-      }
-
-      if (!info?.exists) {
-        setError('Recording failed. Please try again.');
-        setVoiceState('idle');
-        return;
-      }
-
-      const size = (info as any).size ?? 0;
-      if (size <= 1000) {
-        setError('Recording too short. Please try again.');
-        setVoiceState('idle');
-        return;
-      }
-
-      let base64: string;
-      try {
-        // Copy to app's own cacheDirectory first — expo-file-system/legacy
-        // can't read from host.exp.exponent/cache/Audio/ on Android (Expo Go sandbox).
-        const destUri =
-          FileSystem.cacheDirectory + `voice_${Date.now()}.m4a`;
-        await FileSystem.copyAsync({ from: uri, to: destUri });
-
-        base64 = await FileSystem.readAsStringAsync(destUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        // Clean up the copy
-        FileSystem.deleteAsync(destUri, { idempotent: true }).catch(() => {});
-      } catch (e) {
-        console.error('[VoiceScreen] File read error:', e);
-        setError('Recording failed. Please try again.');
-        setVoiceState('idle');
-        return;
-      }
-
-      await setAudioModeAsync({ allowsRecording: false });
-
-      const userTs = recordingStopTimeRef.current;
-      const aiText = await callGemini({ audioBase64: base64, mimeType: 'audio/m4a' });
-
-      const latency = Date.now() - userTs;
-      console.log(`[VoiceScreen] Response latency: ${latency}ms`);
-
-      saveToMemory('[Voice Message]', aiText, userTs);
-      speak(aiText);
-    } catch (err: any) {
-      console.error('[VoiceScreen] stopNativeSession error:', err);
-
-      if (String(err?.message ?? '').includes('429') || String(err?.status ?? '').includes('429')) {
-        setError('Meenakshi is taking a break. Try again in a moment.');
-      } else {
-        setError('Something went wrong. Please try again.');
-      }
-      setVoiceState('idle');
-    } finally {
-      isStoppingRef.current = false;
-    }
-  };
-
-  // ── Quick chip → text path ────────────────────────────────────────────────
-
-  const handleChip = async (chip: string) => {
-    setError(null);
-    Speech.stop();
-
-    if (Platform.OS === 'web' && webSession) {
-      setUserText(`"${chip}"`);
-      if (!webSession.isActive) {
-        await webSession.startSession();
-        await new Promise(r => setTimeout(r, 600));
-      }
-      try {
-        webSession.session?.sendClientContent({ turns: [{ parts: [{ text: chip }] }] });
-      } catch (_) {
-        await sendTextToGemini(chip);
-      }
-    } else {
-      await sendTextToGemini(chip);
-    }
-  };
-
-  const sendTextToGemini = async (query: string) => {
-    const userTs = Date.now();
-    setUserText(`"${query}"`);
-    setVoiceState('processing');
-    setModelText('Oru nimisham…');
-
-    try {
-      const aiText = await callGemini({ text: query });
-
-      const latency = Date.now() - userTs;
-      console.log(`[VoiceScreen] Response latency: ${latency}ms`);
-
-      saveToMemory(query, aiText, userTs);
-      speak(aiText);
-    } catch (err: any) {
-      console.error('[VoiceScreen] sendTextToGemini error:', err);
-      if (String(err?.message ?? '').includes('429')) {
-        setError('Meenakshi is taking a break. Try again in a moment.');
-      } else {
-        setError('Something went wrong. Please try again.');
-      }
-      setVoiceState('idle');
-    }
-  };
-
-  // ── Mic button handler ────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleMic = async () => {
-    if (Platform.OS === 'web' && webSession) {
-      if (webSession.isActive) {
-        webSession.stopSession();
-      } else {
-        await webSession.startSession();
-      }
-      return;
-    }
-
-    if (voiceState === 'recording') {
-      await stopNativeSession();
-    } else if (voiceState === 'speaking') {
-      Speech.stop();
-      setVoiceState('idle');
-    } else if (voiceState === 'idle') {
-      await startNativeRecording();
+    if (isActive) {
+      // Instead of killing the session, force the AI to respond to what was just said
+      forceTurnComplete();
+    } else {
+      await startSession();
     }
   };
 
   const handleStop = () => {
-    Speech.stop();
-    if (voiceState === 'speaking') setVoiceState('idle');
-    if (Platform.OS === 'web' && webSession?.isActive) webSession.stopSession();
+    stopSession();
   };
 
-  // ── Status label ──────────────────────────────────────────────────────────
+  const handleChip = (chip: string) => {
+    if (!isActive) {
+      // Start session then send chip once connected
+      startSession().then(() => {
+        // Small delay to let the socket open
+        setTimeout(() => sendText(chip), 800);
+      });
+    } else {
+      sendText(chip);
+    }
+  };
+
+  // ── Derived display values ────────────────────────────────────────────────
 
   const statusLabel = (() => {
-    if (Platform.OS === 'web' && webSession) {
-      return webSession.isActive ? '● Streaming' : 'Ready';
-    }
     switch (voiceState) {
-      case 'recording':   return '● Recording…';
+      case 'connecting':  return 'Connecting…';
+      case 'listening':   return '● Listening';
       case 'processing':  return '● Processing…';
       case 'speaking':    return '● Speaking…';
+      case 'error':       return 'Error';
       default:            return 'Ready';
     }
   })();
 
-  const displayText =
-    Platform.OS === 'web' && webSession
-      ? webSession.transcript || modelText
-      : modelText;
+  const hintText = (() => {
+    switch (voiceState) {
+      case 'connecting':  return 'Starting Meenakshi…';
+      case 'listening':   return 'Speak now — Meenakshi is listening';
+      case 'processing':  return 'Thinking…';
+      case 'speaking':    return 'Tap mic to interrupt';
+      case 'error':       return 'Tap the mic to reconnect';
+      default:            return 'Tap the mic to speak with Meenakshi';
+    }
+  })();
 
-  const displayError =
-    Platform.OS === 'web' && webSession ? webSession.error ?? error : error;
+  const userDisplayText = userTranscript || (voiceState === 'idle' ? 'Tap the mic to speak' : '');
 
   // ── Orb color by state ────────────────────────────────────────────────────
   const orbBg =
-    voiceState === 'recording'
+    voiceState === 'error'
       ? Colors.error
       : voiceState === 'speaking'
       ? Colors.secondaryContainer
+      : voiceState === 'listening' || voiceState === 'processing'
+      ? Colors.secondary
       : Colors.secondary;
 
   // ── Mic icon ──────────────────────────────────────────────────────────────
   const micIcon =
-    voiceState === 'recording'
-      ? '⏹'
+    voiceState === 'connecting'
+      ? '⏳'
       : voiceState === 'speaking'
       ? '🔊'
+      : isActive
+      ? '⏹'
       : '🎙️';
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -497,7 +211,7 @@ export default function VoiceScreen() {
 
         {/* ── Header ── */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Main' as never)}>
             <Text style={styles.headerBtnText}>✕</Text>
           </TouchableOpacity>
 
@@ -508,8 +222,8 @@ export default function VoiceScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.headerBtn}>
-            <Text style={styles.headerBtnText}>⚙️</Text>
+          <TouchableOpacity style={styles.headerBtn} onPress={toggleMute}>
+            <Text style={styles.headerBtnText}>{isMuted ? '🔇' : '🔔'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -518,9 +232,11 @@ export default function VoiceScreen() {
 
           {/* Transcript area */}
           <View style={styles.transcriptArea}>
-            <Text style={styles.userText} numberOfLines={2}>{userText}</Text>
-            {displayText ? (
-              <Text style={styles.modelText} numberOfLines={5}>{displayText}</Text>
+            {userDisplayText ? (
+              <Text style={styles.userText} numberOfLines={2}>{userDisplayText}</Text>
+            ) : null}
+            {aiTranscript ? (
+              <Text style={styles.modelText} numberOfLines={5}>{aiTranscript}</Text>
             ) : null}
           </View>
 
@@ -567,11 +283,11 @@ export default function VoiceScreen() {
         <View style={styles.footer}>
 
           {/* Error banner */}
-          {displayError && (
+          {error && (
             <View style={styles.errorWrap}>
-              <Text style={styles.errorText}>{displayError}</Text>
+              <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity
-                onPress={() => setError(null)}
+                onPress={() => startSession()}
                 style={styles.errorRetry}
               >
                 <Text style={styles.errorRetryText}>Retry</Text>
@@ -580,13 +296,7 @@ export default function VoiceScreen() {
           )}
 
           {/* Mode hint */}
-          <Text style={styles.hint}>
-            {Platform.OS === 'web'
-              ? 'Web: Real-time streaming'
-              : voiceState === 'recording'
-              ? 'Tap mic again to send'
-              : 'Tap and speak — Meenakshi will reply'}
-          </Text>
+          <Text style={styles.hint}>{hintText}</Text>
 
           {/* Quick chips */}
           <ScrollView
@@ -623,19 +333,20 @@ export default function VoiceScreen() {
             <TouchableOpacity
               style={[
                 styles.micBtn,
-                voiceState === 'recording' && styles.micBtnRecording,
-                voiceState === 'speaking'  && styles.micBtnSpeaking,
+                voiceState === 'error'    && styles.micBtnError,
+                voiceState === 'speaking' && styles.micBtnSpeaking,
               ]}
               onPress={handleMic}
               activeOpacity={0.85}
+              disabled={voiceState === 'connecting'}
             >
               <Text style={styles.micIcon}>{micIcon}</Text>
             </TouchableOpacity>
 
-            {/* Stop / mute */}
+            {/* Stop */}
             <TouchableOpacity style={styles.sideBtn} onPress={handleStop}>
               <View style={styles.sidePill}>
-                <Text style={styles.sidePillIcon}>🔇</Text>
+                <Text style={styles.sidePillIcon}>⏹</Text>
               </View>
               <Text style={styles.sideBtnLabel}>Stop</Text>
             </TouchableOpacity>
@@ -892,7 +603,7 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     elevation: 12,
   },
-  micBtnRecording: {
+  micBtnError: {
     backgroundColor: Colors.error,
     shadowColor: Colors.error,
   },
