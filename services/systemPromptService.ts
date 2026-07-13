@@ -3,6 +3,7 @@ import { buildMemoryContext, buildEmailContext } from './memoryService';
 import { getLatestSnapshot } from './financialHealthService';
 import { getAllContacts } from './relationshipService';
 import { getFollowUps } from './followUpService';
+import { getUserDocuments, Document } from './documentService';
 import supabase from '../lib/supabase';
 
 const SYSTEM_PROMPT_CACHE_MS = 5 * 60 * 1000;
@@ -42,11 +43,12 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const [snapshot, contacts, followUps, historyRes] = await Promise.all([
+      const [snapshot, contacts, followUps, historyRes, recentDocs] = await Promise.all([
         getLatestSnapshot(user.id).catch(() => null),
         getAllContacts().catch(() => [] as any[]),
         getFollowUps().catch(() => [] as any[]),
-        (async () => { try { return await supabase.from('email_events').select('received_at, category, amount, ai_summary, sender_name, entity_email_links(entities(name))').eq('user_id', user.id).order('received_at', { ascending: false }).limit(10); } catch { return { data: null }; } })()
+        (async () => { try { return await supabase.from('email_events').select('received_at, category, amount, ai_summary, sender_name, entity_email_links(entities(name))').eq('user_id', user.id).order('received_at', { ascending: false }).limit(10); } catch { return { data: null }; } })(),
+        getUserDocuments(user.id).catch(() => [] as Document[])
       ]);
 
       // Financial block
@@ -72,6 +74,13 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
           `\n\nFINANCIAL CONTEXT: ${snapshot.summary ?? 'No summary available.'}` +
           `\n\nUPCOMING OBLIGATIONS:\n${obligations}` +
           `\n\nRECENT FINANCIAL EVENTS:\n${eventsStr}`;
+      }
+
+      // Document block
+      if (recentDocs.length > 0) {
+        const topDocs = recentDocs.slice(0, 3);
+        const recentDocumentsContext = `RECENT UPLOADED DOCUMENTS (for budget planning and general context):\n${topDocs.map((doc: Document) => `- [${doc.file_name}] (${doc.document_type}): ${doc.summary || 'No summary'} | Obligations: ${JSON.stringify(doc.obligations || [])}`).join('\n')}`;
+        prompt += `\n\n${recentDocumentsContext}`;
       }
 
       // Relationship block — compact summary only, no per-contact DB calls

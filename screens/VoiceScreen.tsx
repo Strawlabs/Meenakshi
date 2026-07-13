@@ -194,9 +194,9 @@ export default function VoiceScreen() {
     voiceState === 'connecting'
       ? '⏳'
       : voiceState === 'speaking'
-      ? '🔊'
-      : isActive
-      ? '⏹'
+      ? '✋'
+      : voiceState === 'processing'
+      ? '⏸'
       : '🎙️';
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -230,8 +230,8 @@ export default function VoiceScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.headerBtn} onPress={toggleMute}>
-            <Text style={styles.headerBtnText}>{isMuted ? '🔇' : '🔔'}</Text>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Settings' as never)}>
+            <Text style={styles.headerBtnText}>⚙️</Text>
           </TouchableOpacity>
         </View>
 
@@ -249,7 +249,12 @@ export default function VoiceScreen() {
           </View>
 
           {/* Orb */}
-          <View style={styles.orbWrap}>
+          <TouchableOpacity 
+            style={styles.orbWrap} 
+            activeOpacity={0.85} 
+            onPress={handleMic}
+            disabled={voiceState === 'connecting'}
+          >
             <Animated.View
               style={[
                 styles.pingRing,
@@ -270,7 +275,7 @@ export default function VoiceScreen() {
                 isActive && styles.orbActive,
               ]}
             />
-          </View>
+          </TouchableOpacity>
 
           {/* Waveform */}
           <View style={styles.waveform}>
@@ -354,12 +359,12 @@ export default function VoiceScreen() {
               <Text style={styles.micIcon}>{micIcon}</Text>
             </TouchableOpacity>
 
-            {/* Stop */}
+            {/* End session */}
             <TouchableOpacity style={styles.sideBtn} onPress={handleStop}>
               <View style={styles.sidePill}>
-                <Text style={styles.sidePillIcon}>⏹</Text>
+                <Text style={styles.sidePillIcon}>✕</Text>
               </View>
-              <Text style={styles.sideBtnLabel}>Stop</Text>
+              <Text style={styles.sideBtnLabel}>End</Text>
             </TouchableOpacity>
           </View>
         </View>

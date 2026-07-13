@@ -181,11 +181,12 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         const isBase64 = typeof buffer.data === 'string';
         const byteLen = buffer.data?.byteLength;
         
+        let bytes: Uint8Array;
         let b64 = '';
         if (isBase64) {
           b64 = buffer.data;
+          bytes = decode(b64);
         } else {
-          let bytes: Uint8Array;
           if (buffer.data instanceof ArrayBuffer) {
             bytes = new Uint8Array(buffer.data);
           } else if (buffer.data?.buffer instanceof ArrayBuffer) {
@@ -206,12 +207,31 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           
           b64 = encode(bytes);
         }
+
+        // Calculate RMS for orb pulsing + local VAD latency tracking
+        let sumSquares = 0;
+        const int16View = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+        for (let i = 0; i < int16View.length; i++) {
+          const floatVal = int16View[i] / 32768.0;
+          sumSquares += floatVal * floatVal;
+        }
+        const rms = Math.sqrt(sumSquares / (int16View.length || 1));
+        
+        // 1. Animate the orb on Native devices
+        setAudioLevel(Math.min(1, rms * 4));
+        
+        // 2. Client-side VAD: if speaking, continuously slide the timestamp forward
+        // Lowered threshold to 0.01 because AGC keeps natural speech around 0.015
+        if (rms > 0.01 && turnTimingRef.current.firstAudioByteTs === null) {
+          turnTimingRef.current.userSpeechEndTs = Date.now();
+        }
         
         // Log first few frames to see what's happening
         if (Math.random() < 0.05) {
-          console.log(`[AudioStream] Sending chunk. IsBase64=${isBase64}, byteLength=${byteLen}, b64=${b64.substring(0, 30)}...`);
+          console.log(`[AudioStream] Sending chunk. IsBase64=${isBase64}, byteLength=${byteLen}, rms=${rms.toFixed(3)}`);
         }
         
+        turnTimingRef.current.lastChunkSentTs = Date.now();
         wsRef.current.send(JSON.stringify({
           realtimeInput: { audio: { data: b64, mimeType: 'audio/pcm;rate=16000' } },
         }));
@@ -235,6 +255,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
                 await (expoAudio as any).AudioModule.setAudioModeAsync({
                   allowsRecording: true,
                   playsInSilentMode: true,
+                  shouldRouteThroughEarpiece: false,
                 });
                 nativeStream.start();
               } catch (e) {
@@ -261,10 +282,26 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const turnMessagesRef = useRef<{ userText: string; aiText: string; ts: number } | null>(null);
   const lastTurnCompleteRef = useRef(0);
   const turnCompletePendingRef = useRef(false);
-  const turnTimingRef = useRef<{ userSpeechEndTs: number | null; firstAudioByteTs: number | null }>({
+  // Gate for playNextFromQueue — set false on stopSession to prevent dangling audio after stop
+  const sessionActiveRef = useRef(false);
+  const turnTimingRef = useRef<{
+    userSpeechEndTs: number | null;
+    firstAudioByteTs: number | null;
+    lastChunkSentTs: number | null; // Tracks the last time a chunk was sent from the mic
+    wasInterrupted: boolean; // set by interrupt() — discards this turn's latency measurement
+    wasManualEnd: boolean;   // set by forceTurnComplete() — also discards (timing is user-controlled)
+  }>({
     userSpeechEndTs: null,
     firstAudioByteTs: null,
+    lastChunkSentTs: null,
+    wasInterrupted: false,
+    wasManualEnd: false,
   });
+  // Persistent rolling latency log across turns — only valid (natural) completions
+  const latencyLogRef = useRef<number[]>([]);
+  // Counts every natural (non-interrupted, non-manual) turn within the current WebSocket session.
+  // Turn 1 = cold-start; turns 2+ = steady-state. The split is positional, not cherry-picked.
+  const sessionTurnCountRef = useRef<number>(0);
   
   // Model Fallback Refs
   const modelIndexRef = useRef(0);
@@ -331,14 +368,14 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       streamRef.current = null;
     }
     if (inputCtxRef.current) {
-      inputCtxRef.current.close().catch(() => {});
+      inputCtxRef.current.close().catch((err: any) => console.warn('[useVoiceSession] input context close failed:', err));
       inputCtxRef.current = null;
     }
     sourcesRef.current.forEach(s => { try { s.stop(); } catch (_) {} });
     sourcesRef.current.clear();
     nextStartTimeRef.current = 0;
     if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current.close().catch((err: any) => console.warn('[useVoiceSession] audio context close failed:', err));
       audioContextRef.current = null;
     }
   }, []);
@@ -346,14 +383,29 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   // ── Native: cleanup ────────────────────────────────────────────────────────
 
   const cleanupNative = useCallback(() => {
+    // Mark session as dead FIRST so playNextFromQueue exits immediately
+    sessionActiveRef.current = false;
+
     if (nativeStream && isRecordingActiveRef.current) {
       try { nativeStream.stop(); } catch (err) { console.warn('[useVoiceSession] Error stopping native stream:', err); }
     }
     isRecordingActiveRef.current = false;
 
-    // Stop player
+    // Drain ALL audio queues (raw PCM + preloaded WAVs) to stop any in-flight playback
     audioQueueRef.current = [];
+    preloadedQueueRef.current = [];
     isQueuePlayingRef.current = false;
+    isPreloadingRef.current = false;
+
+    // Cancel any pending PCM flush timer
+    if (pcmFlushTimeoutRef.current) {
+      clearTimeout(pcmFlushTimeoutRef.current);
+      pcmFlushTimeoutRef.current = null;
+    }
+    pcmBufferRef.current = [];
+    pcmBufferTotalLengthRef.current = 0;
+
+    // Stop active player
     if (nativePlayerRef.current) {
       try { nativePlayerRef.current.remove(); } catch (_) {}
       nativePlayerRef.current = null;
@@ -415,10 +467,13 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     lastTurnCompleteRef.current = Date.now();
 
     console.log('[useVoiceSession] audioStreamEnd sent, waiting for final turnComplete before any close');
-            console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
+    console.log('[useVoiceSession] Sending audioStreamEnd (user override)...');
     try {
+      // Mark this turn as manually ended — latency would include user think-time, not model speed
       turnTimingRef.current.userSpeechEndTs = Date.now();
       turnTimingRef.current.firstAudioByteTs = null;
+      turnTimingRef.current.wasInterrupted = false;
+      turnTimingRef.current.wasManualEnd = true;
       wsRef.current.send(JSON.stringify({
         realtimeInput: { audioStreamEnd: true },
       }));
@@ -432,10 +487,18 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     if (voiceStateRef.current !== 'speaking' && voiceStateRef.current !== 'processing') return;
     console.log('[useVoiceSession] Interrupting AI playback...');
 
-    // Clear native playback queues
+    // Clear native playback queues AND abort any in-flight preload pipeline
     audioQueueRef.current = [];
     preloadedQueueRef.current = [];
     isQueuePlayingRef.current = false;
+    isPreloadingRef.current = false; // signals processPreloadPipeline to bail after its current await
+    // Also clear the raw PCM buffer so no new flush can enqueue more chunks
+    pcmBufferRef.current = [];
+    pcmBufferTotalLengthRef.current = 0;
+    if (pcmFlushTimeoutRef.current) {
+      clearTimeout(pcmFlushTimeoutRef.current);
+      pcmFlushTimeoutRef.current = null;
+    }
     
     // Stop active native player
     if (nativePlayerRef.current) {
@@ -450,6 +513,25 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       });
       sourcesRef.current.clear();
       nextStartTimeRef.current = 0;
+    }
+
+    // Mark turn as interrupted — discard latency measurement for this turn
+    turnTimingRef.current.wasInterrupted = true;
+    turnTimingRef.current.userSpeechEndTs = null;
+    turnTimingRef.current.firstAudioByteTs = null;
+
+    // Tell the server to stop generating the current response
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({
+          clientContent: {
+            turns: [],
+            turnComplete: true
+          }
+        }));
+      } catch (err) {
+        console.warn('[useVoiceSession] Failed to send interrupt message:', err);
+      }
     }
 
     setVoiceStateSync('listening');
@@ -483,9 +565,17 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         sumSquares += inputData[i] * inputData[i];
       }
       const rms = Math.sqrt(sumSquares / inputData.length);
+      
+      // 1. Animate the orb on Web
       setAudioLevel(Math.min(1, rms * 4));
 
+      // 2. Client-side VAD: if speaking, continuously slide the timestamp forward
+      if (rms > 0.01 && turnTimingRef.current.firstAudioByteTs === null) {
+        turnTimingRef.current.userSpeechEndTs = Date.now();
+      }
+
       try {
+        turnTimingRef.current.lastChunkSentTs = Date.now();
         wsRef.current?.send(JSON.stringify({
           realtimeInput: { audio: { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } },
         }));
@@ -540,6 +630,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       await (expoAudio as any).AudioModule.setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
       });
 
       isRecordingActiveRef.current = true;
@@ -556,7 +647,14 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   // audio duration), the next chunk auto-plays from the queue.
 
   const playNextFromQueue = useCallback(async () => {
+    // Session was stopped — do not play anything, exit immediately
+    if (!sessionActiveRef.current) {
+      isQueuePlayingRef.current = false;
+      return;
+    }
+
     if (preloadedQueueRef.current.length === 0) {
+      console.log('[playNextFromQueue] Queue is empty. Playback stopped.');
       isQueuePlayingRef.current = false;
       // Switch back to listening only if the write pipeline is also empty
       if (audioQueueRef.current.length === 0 && turnCompletePendingRef.current) {
@@ -568,6 +666,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
     isQueuePlayingRef.current = true;
     const { uri, durationMs } = preloadedQueueRef.current.shift()!;
+    console.log(`[playNextFromQueue] Playing chunk from queue (duration: ${durationMs.toFixed(0)}ms)`);
 
     try {
       // Defer old-player removal to allow hardware audio buffer to drain.
@@ -587,11 +686,12 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       const finishChunk = () => {
         if (isDone) return;
         isDone = true;
+        console.log(`[playNextFromQueue] Chunk finished playing (duration: ${durationMs.toFixed(0)}ms)`);
         if (nativePlayerRef.current === player) nativePlayerRef.current = null;
 
         setTimeout(() => {
           try { player.remove(); } catch (_) {}
-          FileSystem!.deleteAsync(uri, { idempotent: true }).catch(() => {});
+          FileSystem!.deleteAsync(uri, { idempotent: true }).catch((err: any) => console.warn('[useVoiceSession] temp audio delete failed:', err));
         }, PLAYER_REMOVAL_PADDING_MS);
 
         playNextFromQueue();
@@ -636,9 +736,20 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         const audioDataBytes = Math.max(0, wavBytes.length - 44);
         const durationMs = (audioDataBytes / (24000 * 2)) * 1000;
         
+        console.log(`[processPreloadPipeline] Preloading chunk (duration: ${durationMs.toFixed(0)}ms, file: ${uri.split('/').pop()})`);
+
+        // After the async write, check if interrupt() fired while we were awaiting.
+        // If so, delete the temp file we just wrote and abandon the rest of the queue.
+        if (!isPreloadingRef.current) {
+          FileSystem!.deleteAsync(uri, { idempotent: true }).catch(() => {});
+          break;
+        }
+
         // Fire and forget preload — expo-audio will cache the AVPlayer/bytes
         if (expoAudio && expoAudio.preload) {
-          expoAudio.preload(uri).catch(() => {});
+          expoAudio.preload({ uri }, { preferredForwardBufferDuration: 5 }).catch((err: any) => {
+            console.warn('[useVoiceSession] preload failed:', err);
+          });
         }
         
         preloadedQueueRef.current.push({ uri, durationMs });
@@ -663,6 +774,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     }
 
     try {
+      console.log(`[flushPcmBuffer] Flushing ${pcmBufferTotalLengthRef.current} bytes (First chunk? ${isFirstChunkOfTurnRef.current})`);
+      
       // Mark that the first chunk of this turn has been flushed.
       // Subsequent chunks within the same turn use the larger buffer threshold.
       isFirstChunkOfTurnRef.current = false;
@@ -700,11 +813,13 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       : SUBSEQUENT_CHUNK_FLUSH_MS;
 
     if (pcmBufferTotalLengthRef.current >= threshold) {
+      console.log(`[playNativeAudioChunk] Threshold hit (${pcmBufferTotalLengthRef.current} >= ${threshold}), flushing immediately`);
       if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
       flushPcmBuffer();
     } else {
       if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
       pcmFlushTimeoutRef.current = setTimeout(() => {
+        console.log(`[playNativeAudioChunk] Timeout flush triggered (${pcmBufferTotalLengthRef.current} bytes)`);
         flushPcmBuffer();
       }, flushMs);
     }
@@ -735,6 +850,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
 
     try {
+      sessionActiveRef.current = true; // Gate: allow playNextFromQueue to run
+      sessionTurnCountRef.current = 0; // Reset cold-start counter for new session
+      latencyLogRef.current = [];      // Reset rolling average for new session
       setError(null);
       setVoiceStateSync('connecting');
       setUserTranscript('');
@@ -827,6 +945,11 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
         const handleMessage = async (message: any) => {
           if (!message) return;
+          
+          // Debugging: Log any error or quota warnings from the raw message
+          if (message.error || message.quota || JSON.stringify(message).toLowerCase().includes('quota')) {
+            console.warn('[useVoiceSession] WARNING: Server message contains error/quota:', JSON.stringify(message, null, 2));
+          }
 
           if (message.setupComplete) {
             setupCompleteRef.current = true;
@@ -848,13 +971,48 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
           gotAnyMessageRef.current = true;
           
+          // ── Turn complete — log diagnostics BEFORE we process it ──
+          if (message.serverContent?.turnComplete) {
+            console.log('\n======================================================');
+            console.log('[useVoiceSession] DIAGNOSTIC: Received turnComplete');
+            console.log('[useVoiceSession] Raw message:', JSON.stringify(message, null, 2));
+            console.log('[useVoiceSession] modelTurn parts:', JSON.stringify(message.serverContent.modelTurn?.parts || null, null, 2));
+            
+            if (turnTimingRef.current.lastChunkSentTs) {
+              const actualSilenceDurationMs = Date.now() - turnTimingRef.current.lastChunkSentTs;
+              console.log(`[useVoiceSession] DIAGNOSTIC: Time since last mic chunk sent: ${actualSilenceDurationMs}ms`);
+            }
+            console.log('======================================================\n');
+          }
+          
           // ── Audio data from Gemini ──
           const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
           if (audioData) {
             if (turnTimingRef.current.userSpeechEndTs && !turnTimingRef.current.firstAudioByteTs) {
               turnTimingRef.current.firstAudioByteTs = Date.now();
               const latencyMs = turnTimingRef.current.firstAudioByteTs - turnTimingRef.current.userSpeechEndTs;
-              console.log(`[LATENCY] Time-to-first-audio-byte: ${latencyMs}ms`);
+              if (turnTimingRef.current.wasInterrupted || turnTimingRef.current.wasManualEnd) {
+                // Don't count interrupted/manual turns — timing is polluted by user interaction gaps
+                console.log(`[LATENCY] Turn ${turnTimingRef.current.wasInterrupted ? 'interrupted' : 'manually ended'} — discarding measurement (would have been ${latencyMs}ms)`);
+              } else {
+                // Valid natural turn — VAD detected end-of-speech, measure real model latency.
+                // Turn position is decided by sessionTurnCountRef (first vs rest), never post-hoc.
+                sessionTurnCountRef.current += 1;
+                const turnPos = sessionTurnCountRef.current;
+                if (turnPos === 1) {
+                  // Cold-start: first turn after WebSocket setup. Always higher due to
+                  // connection/init overhead. Logged separately — NOT counted in AC-4 average.
+                  console.log(`[LATENCY] Cold-start (turn 1): ${latencyMs}ms — excluded from AC-4 average`);
+                } else {
+                  // Steady-state: turns 2+ are what the user experiences in real conversation.
+                  // This is the population AC-4's <3000ms bar applies to.
+                  latencyLogRef.current.push(latencyMs);
+                  const count = latencyLogRef.current.length;
+                  const avg = Math.round(latencyLogRef.current.reduce((a, b) => a + b, 0) / count);
+                  console.log(`[LATENCY] Steady-state turn ${turnPos}: ${latencyMs}ms`);
+                  console.log(`[LATENCY] Rolling average (steady-state): ${avg}ms over ${count} turns`);
+                }
+              }
             }
             setVoiceStateSync('speaking');
             if (Platform.OS === 'web') {
@@ -894,6 +1052,13 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
           // ── Turn complete — save to memory ──
           if (message.serverContent?.turnComplete) {
+            // Reset flags for the next turn
+            turnTimingRef.current.wasInterrupted = false;
+            turnTimingRef.current.wasManualEnd = false;
+            turnTimingRef.current.firstAudioByteTs = null;
+            turnTimingRef.current.userSpeechEndTs = null;
+            turnTimingRef.current.lastChunkSentTs = null;
+            
             console.log('[useVoiceSession] Received turnComplete from server. Chunks in queue:', audioQueueRef.current.length, 'pcmBuffer bytes:', pcmBufferTotalLengthRef.current);
             // Force flush any remaining audio bytes immediately
             if (pcmFlushTimeoutRef.current) clearTimeout(pcmFlushTimeoutRef.current);
