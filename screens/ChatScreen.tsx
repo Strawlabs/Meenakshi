@@ -153,11 +153,6 @@ export default function ChatScreen() {
       // Build enriched system prompt from the centralized service
       let enrichedSystemPrompt = await buildSystemPrompt();
       
-      // Chat-specific context extensions
-      const emailCtx = await buildEmailContext();
-      if (emailCtx) {
-        enrichedSystemPrompt += `\n\n${emailCtx}`;
-      }
 
       // Active document (if launched from DocumentDetailScreen or uploaded in chat)
       let documentContext = '';
@@ -176,17 +171,7 @@ RAW TEXT (truncated):\n${rawText}`;
         }
       }
 
-      // Recent documents (if no specific active document)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!documentId && user) {
-        const recentDocs = await getUserDocuments(user.id);
-        const topDocs = recentDocs.slice(0, 3);
-        if (topDocs.length > 0) {
-          const recentDocumentsContext = `RECENT UPLOADED DOCUMENTS (for budget planning and general context):
-${topDocs.map((doc: Document) => `- [${doc.file_name}] (${doc.document_type}): ${doc.summary || 'No summary'} | Obligations: ${JSON.stringify(doc.obligations || [])}`).join('\n')}`;
-          enrichedSystemPrompt += `\n\n${recentDocumentsContext}`;
-        }
-      }
+
 
       let responseText = '';
 
