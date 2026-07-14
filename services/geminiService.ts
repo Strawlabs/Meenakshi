@@ -24,8 +24,7 @@ const FALLBACK_MODELS = [
   'gemini-3-flash-preview',
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
-  'gemini-flash-lite-latest',
-  'gemini-2.5-flash'
+  'gemini-flash-lite-latest'
 ];
 
 // Request queue chain to execute Gemini requests sequentially
@@ -140,17 +139,20 @@ export async function generateGeminiContent(
 
         while (attempt < maxAttempts) {
           try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+            let timeoutId: any;
+            const timeoutPromise = new Promise<Response>((_, reject) => {
+              timeoutId = setTimeout(() => reject(new Error('Fetch request timed out')), 30000);
+            });
 
-            const response = await fetch(url, {
+            const fetchPromise = fetch(url, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify(bodyPayload),
-              signal: controller.signal,
             });
+
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
 
             clearTimeout(timeoutId);
             const json = await response.json();

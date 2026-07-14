@@ -1,20 +1,28 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
-  ScrollView,
+  Text,
+  View,
   TouchableOpacity,
-  SafeAreaView,
   Animated,
+  ScrollView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Colors, Spacing, Radius, FontSize } from '../constants/theme';
-import { MOCK_BRIEFINGS, SUGGESTED_PROMPTS } from '../constants/index';
+import { SUGGESTED_PROMPTS } from '../constants/index';
 import supabase from '../lib/supabase';
-import { detectAnomalies } from '../services/financialTimelineService';
+import {
+  getLatestBriefing,
+  getUnreadNotifications,
+  markNotificationRead,
+  updateNotificationPreferences,
+  type AiBriefing,
+  type Notification,
+} from '../services/notificationService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -63,101 +71,81 @@ function GlassCard({ children, style, onPress }: any) {
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const [briefings, setBriefings] = useState<any[]>([]);
-  const [highSeverityAnomalies, setHighSeverityAnomalies] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [briefing, setBriefing] = useState<AiBriefing | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingBriefing, setLoadingBriefing] = useState(true);
+  const [loadingNotifs, setLoadingNotifs] = useState(true);
+
+  const loadData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Load briefing and notifications in parallel
+      const [latestBriefing, unreadNotifs] = await Promise.all([
+        getLatestBriefing(user.id, 'daily'),
+        getUnreadNotifications(user.id),
+      ]);
+
+      setBriefing(latestBriefing);
+      setNotifications(unreadNotifs);
+
+      // Register push token (no-op on simulator; works on physical device)
+      try {
+        const Constants = await import('expo-constants');
+        if (Constants.default.appOwnership === 'expo') {
+          console.log('[HomeScreen] Running in Expo Go, skipping push registration');
+        } else {
+          const Notifications = await import('expo-notifications').catch(() => null);
+          if (!Notifications) throw new Error('expo-notifications not installed');
+          const { status } = await Notifications.requestPermissionsAsync();
+
+        if (status === 'granted') {
+          const tokenData = await Notifications.getExpoPushTokenAsync();
+          if (tokenData?.data) {
+            await updateNotificationPreferences(user.id, { push_token: tokenData.data });
+          }
+        }
+        } // Close else block
+      } catch {
+        // expo-notifications not configured or simulator — safe to skip
+      }
+    } catch (err) {
+      console.error('[HomeScreen] loadData error:', err);
+    } finally {
+      setLoadingBriefing(false);
+      setLoadingNotifs(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadBriefings() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setBriefings([]);
-          setHighSeverityAnomalies([]);
-          setLoading(false);
-          return;
-        }
-
-        // Detect Anomalies
-        const anomalies = await detectAnomalies(user.id);
-        const highSeverity = anomalies.filter((a: any) => a.severity === 'high');
-        setHighSeverityAnomalies(highSeverity);
-
-        const { data: events, error } = await supabase
-          .from('email_events')
-          .select('id, category, subject, ai_summary, amount, due_date')
-          .eq('user_id', user.id)
-          .eq('is_duplicate', false)
-          .order('received_at', { ascending: false })
-          .limit(3);
-
-        if (error || !events || events.length === 0) {
-          setBriefings([]);
-        } else {
-          const mapped = events.map((event: any) => {
-            const category = event.category || 'other';
-            let title = 'Notification';
-            let icon = '✉️';
-            let actionText = 'Open';
-            let type: 'alert' | 'email' = 'email';
-
-            if (category === 'salary') {
-              title = 'Salary Credited';
-              icon = '💰';
-              actionText = 'View Details';
-              type = 'alert';
-            } else if (category === 'emi') {
-              title = 'EMI Reminder';
-              icon = '🏠';
-              actionText = 'Schedule Pay';
-              type = 'alert';
-            } else if (category === 'bill') {
-              title = 'Credit Card Bill Due';
-              icon = '💳';
-              actionText = 'Pay Now';
-              type = 'alert';
-            } else if (category === 'renewal') {
-              title = 'Insurance Renewal';
-              icon = '🛡️';
-              actionText = 'Renew Now';
-              type = 'alert';
-            } else if (category === 'notice') {
-              title = 'Official Notice';
-              icon = '⚠️';
-              actionText = 'Review';
-              type = 'alert';
-            } else if (category === 'relationship') {
-              title = 'Meeting Follow-up';
-              icon = '👥';
-              actionText = 'Reply';
-            }
-
-            return {
-              id: event.id,
-              title,
-              description: event.ai_summary || event.subject,
-              type,
-              icon,
-              actionText,
-            };
-          });
-          setBriefings(mapped);
-        }
-      } catch (err) {
-        console.error('[HomeScreen] Failed to load briefings:', err);
-        setBriefings([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadBriefings();
-  }, []);
+    loadData();
+  }, [loadData]);
 
   const handlePrompt = (query: string, description?: string) => {
     const finalQuery = description
       ? `Tell me more about this briefing: "${description}"`
       : query;
     navigation.navigate('Chat', { initialQuery: finalQuery });
+  };
+
+  const handleNotificationTap = async (notif: Notification) => {
+    // Mark read immediately for responsive feel
+    await markNotificationRead(notif.id);
+    setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
+    // Route based on category
+    if (notif.category === 'financial_alert' || notif.category === 'renewal') {
+      navigation.navigate('Finance' as any);
+    } else if (notif.category === 'relationship_reminder') {
+      navigation.navigate('Circles' as any);
+    }
+  };
+
+  /** Priority dot colour — Stitch palette */
+  const priorityDotColor = (priority: Notification['priority']): string => {
+    if (priority === 'high') return Colors.error;          // #ba1a1a red
+    if (priority === 'medium') return '#f59e0b';           // true amber (not in Stitch yet)
+    return Colors.outline;                                  // #76777d grey
   };
 
   return (
@@ -196,74 +184,82 @@ export default function HomeScreen() {
           <Text style={styles.heroSub}>I've prepared today's briefing for you.</Text>
         </View>
 
-        {highSeverityAnomalies.length > 0 && (
-          <TouchableOpacity
-            style={styles.anomalyCard}
-            onPress={() => navigation.navigate('Finance' as any)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.anomalyIconWrap}>
-              <Text style={styles.anomalyIconText}>🚨</Text>
-            </View>
-            <View style={styles.anomalyTextWrap}>
-              <Text style={styles.anomalyTitle}>
-                Meenakshi detected {highSeverityAnomalies.length} unusual financial event{highSeverityAnomalies.length > 1 ? 's' : ''}.
-              </Text>
-              <Text style={styles.anomalySub}>Tap to review.</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Daily AI Briefing Cards — Stitch narrative style */}
+        {/* ── AI Daily Briefing Card ─────────────────────── */}
         <View style={styles.section}>
-          {briefings.length === 0 ? (
-            <GlassCard>
+          <Text style={styles.sectionLabel}>Today's Briefing</Text>
+          <GlassCard>
+            {loadingBriefing ? (
+              <View style={styles.emptyBriefingContainer}>
+                <Text style={styles.emptyBriefingDesc}>Loading your briefing…</Text>
+              </View>
+            ) : briefing === null ? (
               <View style={styles.emptyBriefingContainer}>
                 <Text style={styles.emptyBriefingIcon}>✨</Text>
-                <Text style={styles.emptyBriefingTitle}>Your Briefing is Empty</Text>
+                <Text style={styles.emptyBriefingTitle}>Briefing Not Ready Yet</Text>
                 <Text style={styles.emptyBriefingDesc}>
-                  Meenakshi hasn't detected any active financial notifications in your connected inbox yet. Go to the Chronicle tab and pull down to refresh to sync your Gmail!
+                  Meenakshi will prepare your daily briefing at 7 AM. Sync your Gmail in the Wealth tab to get started.
                 </Text>
               </View>
-            </GlassCard>
-          ) : (
-            briefings.map(brief => (
-              <GlassCard key={brief.id}>
-                <View style={styles.briefRow}>
-                  <View
-                    style={[
-                      styles.briefIconWrap,
-                      brief.type === 'alert' ? styles.briefIconWrapAlert : styles.briefIconWrapInfo,
-                    ]}
-                  >
-                    <Text style={styles.briefIconText}>
-                      {brief.icon || (brief.type === 'alert' ? '🔔' : '✉️')}
-                    </Text>
+            ) : (
+              <View style={styles.briefingCardInner}>
+                <Text style={styles.briefingHeadline}>{briefing.content.headline}</Text>
+                {(briefing.content.sections ?? []).map((section, si) => (
+                  <View key={si} style={styles.briefingSection}>
+                    <Text style={styles.briefingSectionTitle}>{section.title}</Text>
+                    {(section.items ?? []).map((item, ii) => (
+                      <View key={ii} style={styles.briefingItemRow}>
+                        <Text style={styles.briefingItemBullet}>•</Text>
+                        <Text style={styles.briefingItemText}>{item}</Text>
+                      </View>
+                    ))}
                   </View>
-                  <View style={styles.briefContent}>
-                    <Text style={styles.briefTitle}>{brief.title}</Text>
-                    <Text style={styles.briefDesc}>{brief.description}</Text>
-                  </View>
-                </View>
-                <View style={styles.briefActions}>
-                  {brief.actionText && (
-                    <TouchableOpacity
-                      style={styles.briefBtnPrimary}
-                      onPress={() => handlePrompt(brief.title, brief.description)}
-                    >
-                      <Text style={styles.briefBtnPrimaryText}>{brief.actionText}</Text>
-                    </TouchableOpacity>
-                  )}
-                  {brief.secondaryText && (
-                    <TouchableOpacity style={styles.briefBtnSecondary}>
-                      <Text style={styles.briefBtnSecondaryText}>{brief.secondaryText}</Text>
-                    </TouchableOpacity>
-                  )}
+                ))}
+                <TouchableOpacity
+                  style={styles.briefBtnPrimary}
+                  onPress={() => handlePrompt('Tell me more about today\'s briefing')}
+                >
+                  <Text style={styles.briefBtnPrimaryText}>Ask Meenakshi</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </GlassCard>
+        </View>
+
+        {/* ── Smart Notifications ──────────────────────────── */}
+        {(loadingNotifs || notifications.length > 0) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Notifications</Text>
+            {loadingNotifs ? (
+              <GlassCard>
+                <View style={styles.emptyBriefingContainer}>
+                  <Text style={styles.emptyBriefingDesc}>Checking notifications…</Text>
                 </View>
               </GlassCard>
-            ))
-          )}
-        </View>
+            ) : (
+              notifications.map((notif) => (
+                <GlassCard key={notif.id} onPress={() => handleNotificationTap(notif)}>
+                  <View style={styles.notifRow}>
+                    <View
+                      style={[
+                        styles.priorityDot,
+                        { backgroundColor: priorityDotColor(notif.priority) },
+                      ]}
+                    />
+                    <View style={styles.notifContent}>
+                      <Text style={styles.notifTitle} numberOfLines={1}>
+                        {notif.title}
+                      </Text>
+                      <Text style={styles.notifBody} numberOfLines={1}>
+                        {notif.body}
+                      </Text>
+                    </View>
+                    <Text style={styles.notifArrow}>›</Text>
+                  </View>
+                </GlassCard>
+              ))
+            )}
+          </View>
+        )}
 
         {/* Suggested Inquiries — Stitch */}
         <View style={styles.section}>
@@ -481,62 +477,88 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: Spacing.xs,
   },
-  // Brief card
-  briefRow: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    alignItems: 'flex-start',
+  // ── AI Briefing Card ───────────────────────────────────
+  briefingCardInner: {
     padding: Spacing.lg,
+    gap: Spacing.md,
   },
-  briefIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  briefIconWrapAlert: { backgroundColor: Colors.errorContainer },
-  briefIconWrapInfo: { backgroundColor: Colors.primaryFixed },
-  briefIconText: { fontSize: 20 },
-  briefContent: { flex: 1, gap: 4 },
-  briefTitle: {
-    fontSize: 18,
+  briefingHeadline: {
+    fontSize: FontSize.headlineSm,
     fontWeight: '700',
     color: Colors.onSurface,
+    lineHeight: 28,
+    letterSpacing: -0.2,
   },
-  briefDesc: {
-    fontSize: FontSize.bodyMd,
-    color: Colors.onSurfaceVariant,
-    lineHeight: 24,
+  briefingSection: {
+    gap: 6,
   },
-  briefActions: {
+  briefingSectionTitle: {
+    fontSize: FontSize.labelSm,
+    fontWeight: '700',
+    color: Colors.secondary,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  briefingItemRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    gap: 6,
+    alignItems: 'flex-start',
   },
+  briefingItemBullet: {
+    fontSize: FontSize.bodySm,
+    color: Colors.onSurfaceVariant,
+    lineHeight: 20,
+  },
+  briefingItemText: {
+    fontSize: FontSize.bodySm,
+    color: Colors.onSurfaceVariant,
+    lineHeight: 20,
+    flex: 1,
+  },
+  // ── Notification rows ──────────────────────────────────
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  notifContent: {
+    flex: 1,
+    gap: 2,
+  },
+  notifTitle: {
+    fontSize: FontSize.bodyMd,
+    fontWeight: '600',
+    color: Colors.onSurface,
+  },
+  notifBody: {
+    fontSize: FontSize.bodySm,
+    color: Colors.onSurfaceVariant,
+  },
+  notifArrow: {
+    fontSize: 20,
+    color: Colors.outline,
+    fontWeight: '300',
+  },
+  // ── Shared brief action button ─────────────────────────
   briefBtnPrimary: {
+    alignSelf: 'flex-start',
     backgroundColor: Colors.secondary,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
+    marginTop: Spacing.xs,
   },
   briefBtnPrimaryText: {
     fontSize: FontSize.labelSm,
     fontWeight: '700',
     color: Colors.onSecondary,
-    letterSpacing: 0.3,
-  },
-  briefBtnSecondary: {
-    backgroundColor: Colors.surfaceContainerHigh,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-  },
-  briefBtnSecondaryText: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '600',
-    color: Colors.onSurface,
     letterSpacing: 0.3,
   },
   // Prompt

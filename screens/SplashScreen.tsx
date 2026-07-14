@@ -78,7 +78,7 @@ export default function SplashScreen({ navigation }: Props) {
     const { ensureAuthenticatedSession } = require('../services/authHelper');
     ensureAuthenticatedSession().catch((err: any) => console.error('[Splash] Auth failed:', err));
 
-    const timer = setTimeout(() => navigation.replace('Welcome'), 2600);
+    const timer = setTimeout(() => navigation.replace('Welcome'), 100);
     return () => clearTimeout(timer);
   }, []);
 

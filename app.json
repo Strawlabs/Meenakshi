@@ -24,7 +24,9 @@
       "package": "com.kavyapy.meenakshi",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -36,6 +38,13 @@
         "expo-audio",
         {
           "microphonePermission": "Allow Meenakshi to access your microphone for voice conversations."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#6b38d4",
+          "sounds": []
         }
       ]
     ]
