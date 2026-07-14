@@ -102,19 +102,7 @@ const PLAYER_REMOVAL_PADDING_MS = 500;
 let _cachedSystemPrompt: string | null = null;
 let _cachedSystemPromptAt = 0;
 
-// Language detection + Meenakshi personality for Live sessions
-const LANGUAGE_INSTRUCTION = `
 
-LANGUAGE DETECTION:
-Detect the language the user is speaking and respond naturally in the same language.
-- If English → respond in clear, warm English
-- If Tamil or Tanglish → respond naturally in Tanglish (mix Tamil words like 'oru nimisham',
-  'nalla kelvi', 'seri', 'paathukkalam', 'aama da' naturally into English sentences)
-- If Hindi → respond in simple Hindi with English financial terms
-Never announce that you are switching languages. Just switch naturally.
-Your voice is warm, confident, empathetic, and sounds like a knowledgeable friend who happens to
-know everything about your finances. Speak at a natural pace. Responses are short and
-conversational — under 4 sentences unless detailed analysis is requested.`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -282,8 +270,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const turnMessagesRef = useRef<{ userText: string; aiText: string; ts: number } | null>(null);
   const lastTurnCompleteRef = useRef(0);
   const turnCompletePendingRef = useRef(false);
-  // Gate for playNextFromQueue — set false on stopSession to prevent dangling audio after stop
   const sessionActiveRef = useRef(false);
+  const sessionInterruptTokenRef = useRef(0);
   const turnTimingRef = useRef<{
     userSpeechEndTs: number | null;
     firstAudioByteTs: number | null;
@@ -500,8 +488,11 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       pcmFlushTimeoutRef.current = null;
     }
     
+    sessionInterruptTokenRef.current += 1;
+
     // Stop active native player
     if (nativePlayerRef.current) {
+      try { nativePlayerRef.current.pause(); } catch (_) {}
       try { nativePlayerRef.current.remove(); } catch (_) {}
       nativePlayerRef.current = null;
     }
@@ -520,19 +511,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     turnTimingRef.current.userSpeechEndTs = null;
     turnTimingRef.current.firstAudioByteTs = null;
 
-    // Tell the server to stop generating the current response
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(JSON.stringify({
-          clientContent: {
-            turns: [],
-            turnComplete: true
-          }
-        }));
-      } catch (err) {
-        console.warn('[useVoiceSession] Failed to send interrupt message:', err);
-      }
-    }
+    // We intentionally DO NOT send clientContent.turnComplete here.
+    // The Live API does not have a formal cancel signal. It will keep generating 
+    // and streaming the interrupted turn in the background until it finishes, 
+    // and our onmessage handler will discard those chunks because wasInterrupted=true.
 
     setVoiceStateSync('listening');
   }, []);
@@ -647,6 +629,8 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   // audio duration), the next chunk auto-plays from the queue.
 
   const playNextFromQueue = useCallback(async () => {
+    const myToken = sessionInterruptTokenRef.current;
+    
     // Session was stopped — do not play anything, exit immediately
     if (!sessionActiveRef.current) {
       isQueuePlayingRef.current = false;
@@ -693,6 +677,11 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           try { player.remove(); } catch (_) {}
           FileSystem!.deleteAsync(uri, { idempotent: true }).catch((err: any) => console.warn('[useVoiceSession] temp audio delete failed:', err));
         }, PLAYER_REMOVAL_PADDING_MS);
+
+        if (myToken !== sessionInterruptTokenRef.current) {
+          console.log('[playNextFromQueue] Aborting next chunk playback due to interrupt');
+          return;
+        }
 
         playNextFromQueue();
       };
@@ -988,44 +977,48 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           // ── Audio data from Gemini ──
           const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
           if (audioData) {
-            if (turnTimingRef.current.userSpeechEndTs && !turnTimingRef.current.firstAudioByteTs) {
-              turnTimingRef.current.firstAudioByteTs = Date.now();
-              const latencyMs = turnTimingRef.current.firstAudioByteTs - turnTimingRef.current.userSpeechEndTs;
-              if (turnTimingRef.current.wasInterrupted || turnTimingRef.current.wasManualEnd) {
-                // Don't count interrupted/manual turns — timing is polluted by user interaction gaps
-                console.log(`[LATENCY] Turn ${turnTimingRef.current.wasInterrupted ? 'interrupted' : 'manually ended'} — discarding measurement (would have been ${latencyMs}ms)`);
-              } else {
-                // Valid natural turn — VAD detected end-of-speech, measure real model latency.
-                // Turn position is decided by sessionTurnCountRef (first vs rest), never post-hoc.
-                sessionTurnCountRef.current += 1;
-                const turnPos = sessionTurnCountRef.current;
-                if (turnPos === 1) {
-                  // Cold-start: first turn after WebSocket setup. Always higher due to
-                  // connection/init overhead. Logged separately — NOT counted in AC-4 average.
-                  console.log(`[LATENCY] Cold-start (turn 1): ${latencyMs}ms — excluded from AC-4 average`);
+            if (turnTimingRef.current.wasInterrupted) {
+              console.log('[useVoiceSession] Ignoring incoming audio chunk because turn was interrupted');
+            } else {
+              if (turnTimingRef.current.userSpeechEndTs && !turnTimingRef.current.firstAudioByteTs) {
+                turnTimingRef.current.firstAudioByteTs = Date.now();
+                const latencyMs = turnTimingRef.current.firstAudioByteTs - turnTimingRef.current.userSpeechEndTs;
+                if (turnTimingRef.current.wasManualEnd) {
+                  // Don't count manual end turns — timing is polluted by user interaction gaps
+                  console.log(`[LATENCY] Turn manually ended — discarding measurement (would have been ${latencyMs}ms)`);
                 } else {
-                  // Steady-state: turns 2+ are what the user experiences in real conversation.
-                  // This is the population AC-4's <3000ms bar applies to.
-                  latencyLogRef.current.push(latencyMs);
-                  const count = latencyLogRef.current.length;
-                  const avg = Math.round(latencyLogRef.current.reduce((a, b) => a + b, 0) / count);
-                  console.log(`[LATENCY] Steady-state turn ${turnPos}: ${latencyMs}ms`);
-                  console.log(`[LATENCY] Rolling average (steady-state): ${avg}ms over ${count} turns`);
+                  // Valid natural turn — VAD detected end-of-speech, measure real model latency.
+                  // Turn position is decided by sessionTurnCountRef (first vs rest), never post-hoc.
+                  sessionTurnCountRef.current += 1;
+                  const turnPos = sessionTurnCountRef.current;
+                  if (turnPos === 1) {
+                    // Cold-start: first turn after WebSocket setup. Always higher due to
+                    // connection/init overhead. Logged separately — NOT counted in AC-4 average.
+                    console.log(`[LATENCY] Cold-start (turn 1): ${latencyMs}ms — excluded from AC-4 average`);
+                  } else {
+                    // Steady-state: turns 2+ are what the user experiences in real conversation.
+                    // This is the population AC-4's <3000ms bar applies to.
+                    latencyLogRef.current.push(latencyMs);
+                    const count = latencyLogRef.current.length;
+                    const avg = Math.round(latencyLogRef.current.reduce((a, b) => a + b, 0) / count);
+                    console.log(`[LATENCY] Steady-state turn ${turnPos}: ${latencyMs}ms`);
+                    console.log(`[LATENCY] Rolling average (steady-state): ${avg}ms over ${count} turns`);
+                  }
                 }
               }
-            }
-            setVoiceStateSync('speaking');
-            if (Platform.OS === 'web') {
-              await playWebAudioChunk(audioData);
-            } else {
-              await playNativeAudioChunk(audioData);
+              setVoiceStateSync('speaking');
+              if (Platform.OS === 'web') {
+                await playWebAudioChunk(audioData);
+              } else {
+                await playNativeAudioChunk(audioData);
+              }
             }
           }
 
           // ── Text transcript from model turn parts ──
           const parts: any[] = message.serverContent?.modelTurn?.parts ?? [];
           const textPart = parts.find((p: any) => p.text);
-          if (textPart?.text) {
+          if (textPart?.text && !turnTimingRef.current.wasInterrupted) {
             setAiTranscript(prev => prev + textPart.text);
             if (turnMessagesRef.current) {
               turnMessagesRef.current.aiText += textPart.text;
@@ -1034,7 +1027,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
 
           // ── Output transcription (model speech → text) ──
           const outputTranscript = message.serverContent?.outputTranscription?.text;
-          if (outputTranscript) {
+          if (outputTranscript && !turnTimingRef.current.wasInterrupted) {
             setAiTranscript(prev => prev + outputTranscript);
             if (turnMessagesRef.current) {
               turnMessagesRef.current.aiText += outputTranscript;

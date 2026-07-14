@@ -10,14 +10,6 @@ const SYSTEM_PROMPT_CACHE_MS = 5 * 60 * 1000;
 let _cachedSystemPrompt: string | null = null;
 let _cachedSystemPromptAt = 0;
 
-const LANGUAGE_INSTRUCTION = `
-LANGUAGE DETECTION:
-Detect the language the user is speaking and respond naturally in the same language.
-- If English → respond in clear, warm English
-- If Tamil or Tanglish → respond naturally in Tanglish
-- If Hindi → respond in simple Hindi with English financial terms
-Never announce that you are switching languages. Just switch naturally.`;
-
 export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
   if (!forceRefresh && _cachedSystemPrompt && (Date.now() - _cachedSystemPromptAt) < SYSTEM_PROMPT_CACHE_MS) {
     return _cachedSystemPrompt;
@@ -29,8 +21,7 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
   });
 
   let prompt = MEENAKSHI_SYSTEM_PROMPT
-    + `\n\nTODAY'S DATE: ${today}`
-    + LANGUAGE_INSTRUCTION;
+    + `\n\nTODAY'S DATE: ${today}`;
 
   // Memory context (last 3 sessions)
   const memCtx = await buildMemoryContext().catch(() => '');
@@ -116,7 +107,10 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
     }
   } catch (_) {}
 
+  prompt += `\n\nCRITICAL INSTRUCTION: Even if the user asks a specific question (like "who should I follow up with"), you MUST check the UPCOMING OBLIGATIONS above. If there are overdue bills or upcoming payments, you MUST mention them in your response immediately before or after answering their question. Never omit financial urgencies to save space, but keep the total response under 4 sentences.`;
+
   _cachedSystemPrompt = prompt;
+
   _cachedSystemPromptAt = Date.now();
   console.log('[systemPromptService] System prompt cached.');
   return prompt;
