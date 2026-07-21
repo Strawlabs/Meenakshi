@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState } from 'react';
 import { View, Text, Button, ScrollView, ActivityIndicator, Alert, TouchableOpacity, StyleSheet } from 'react-native';
 import { mockEmails } from '../data/mockEmails';
@@ -5,9 +6,12 @@ import { classifyAllEmails } from '../services/emailIntelligence';
 import { mergeDuplicateEvents } from '../services/duplicateDetector';
 import { saveFinancialEvent } from '../services/memoryService';
 import supabase from '../lib/supabase';
-import { Colors, Spacing, Radius, Typography } from '../constants/theme';
+import { Spacing, Radius, Typography} from '../constants/theme';
 
 export default function EmailIntelligenceTestScreen() {
+  const { colors: Colors } = useAppTheme();
+  const styles = getStyles(Colors);
+
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<Record<number, boolean>>({});
@@ -79,23 +83,19 @@ export default function EmailIntelligenceTestScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     backgroundColor: Colors.background,
-    padding: Spacing.md,
-  },
+    padding: Spacing.md },
   content: {
-    paddingBottom: 50,
-  },
+    paddingBottom: 50 },
   title: {
     ...Typography.headlineLgMobile,
     color: Colors.primary,
     marginBottom: Spacing.md,
-    marginTop: Spacing.lg,
-  },
+    marginTop: Spacing.lg },
   loader: {
-    marginTop: Spacing.containerMobile,
-  },
+    marginTop: Spacing.containerMobile },
   card: {
     backgroundColor: Colors.surface,
     padding: Spacing.md,
@@ -107,47 +107,37 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 2,
-  },
+    elevation: 2 },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   categoryBadge: {
     ...Typography.labelSm,
-    color: Colors.secondary,
-  },
+    color: Colors.secondary },
   duplicateBadgeWrap: {
     backgroundColor: Colors.surfaceContainerHighest,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
-  },
+    borderRadius: 6 },
   duplicateBadgeText: {
     ...Typography.labelSm,
-    color: Colors.onSurfaceVariant,
-  },
+    color: Colors.onSurfaceVariant },
   summary: {
     ...Typography.bodyMd,
     fontWeight: '600',
     color: Colors.onSurface,
-    marginTop: Spacing.sm,
-  },
+    marginTop: Spacing.sm },
   details: {
     ...Typography.labelSm,
     color: Colors.onSurfaceVariant,
-    marginTop: 4,
-  },
+    marginTop: 4 },
   saveBtn: {
     backgroundColor: Colors.secondary,
     padding: 10,
     borderRadius: Radius.md,
     marginTop: Spacing.md,
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   saveBtnText: {
     ...Typography.labelSm,
-    color: Colors.onSecondary,
-  },
-});
+    color: Colors.onSecondary } });

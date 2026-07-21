@@ -34,12 +34,13 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const [snapshot, contacts, followUps, historyRes, recentDocs] = await Promise.all([
+      const [snapshot, contacts, followUps, historyRes, recentDocs, creditReportRes] = await Promise.all([
         getLatestSnapshot(user.id).catch(() => null),
         getAllContacts().catch(() => [] as any[]),
         getFollowUps().catch(() => [] as any[]),
         (async () => { try { return await supabase.from('email_events').select('received_at, category, amount, ai_summary, sender_name, entity_email_links(entities(name))').eq('user_id', user.id).order('received_at', { ascending: false }).limit(10); } catch { return { data: null }; } })(),
-        getUserDocuments(user.id).catch(() => [] as Document[])
+        getUserDocuments(user.id).catch(() => [] as Document[]),
+        (async () => { try { return await supabase.from('credit_reports').select('credit_score, extracted_data').eq('user_id', user.id).order('uploaded_at', { ascending: false }).limit(1).single(); } catch { return { data: null }; } })()
       ]);
 
       // Financial block
@@ -72,6 +73,20 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
         const topDocs = recentDocs.slice(0, 3);
         const recentDocumentsContext = `RECENT UPLOADED DOCUMENTS (for budget planning and general context):\n${topDocs.map((doc: Document) => `- [${doc.file_name}] (${doc.document_type}): ${doc.summary || 'No summary'} | Obligations: ${JSON.stringify(doc.obligations || [])}`).join('\n')}`;
         prompt += `\n\n${recentDocumentsContext}`;
+      }
+
+      // Credit Report block
+      const creditReport = creditReportRes?.data;
+      if (creditReport && creditReport.extracted_data) {
+        const ext = creditReport.extracted_data;
+        prompt += `\n\nCREDIT CONTEXT:\n- Credit Score: ${creditReport.credit_score || ext.credit_score || 'Unknown'}\n`;
+        
+        if (ext.active_loans && ext.active_loans.length > 0) {
+          prompt += `- Active Loans: ${ext.active_loans.map((l: any) => `${l.type} (₹${l.amount})`).join(', ')}\n`;
+        }
+        if (ext.payment_history_flags && ext.payment_history_flags.length > 0) {
+          prompt += `- Alerts: ${ext.payment_history_flags.slice(0, 3).join('; ')}\n`;
+        }
       }
 
       // Relationship block — compact summary only, no per-contact DB calls

@@ -24,6 +24,10 @@ export async function ensureAuthenticatedSession(): Promise<AuthUserState> {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       console.log('[authHelper] Active user session found:', user.id);
+      // Fire-and-forget background sync
+      const { syncAllConnectedIntegrations } = require('./integrationService');
+      syncAllConnectedIntegrations(user.id);
+      
       return { isAuthenticated: true, userId: user.id, error: null };
     }
 
@@ -35,6 +39,10 @@ export async function ensureAuthenticatedSession(): Promise<AuthUserState> {
 
     if (!signInError && signInData.user) {
       console.log('[authHelper] Sign-in succeeded:', signInData.user.id);
+      // Fire-and-forget background sync
+      const { syncAllConnectedIntegrations } = require('./integrationService');
+      syncAllConnectedIntegrations(signInData.user.id);
+
       return { isAuthenticated: true, userId: signInData.user.id, error: null };
     }
 

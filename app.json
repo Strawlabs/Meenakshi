@@ -3,11 +3,13 @@
     "name": "meenakshi",
     "slug": "meenakshi",
     "version": "1.0.0",
+    "scheme": "meenakshi",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.kavyapy.meenakshi",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Meenakshi to access your microphone for voice conversations.",
         "NSCameraUsageDescription": "Allow Meenakshi to access your camera to scan business cards."
@@ -46,7 +48,9 @@
           "color": "#6b38d4",
           "sounds": []
         }
-      ]
+      ],
+      "expo-font",
+      "expo-splash-screen"
     ]
   }
 }

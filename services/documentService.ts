@@ -5,6 +5,7 @@
  * and CRUD operations against the `documents` table.
  */
 
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import supabase from '../lib/supabase';
 import { generateGeminiContent } from './geminiService';
@@ -145,14 +146,26 @@ export async function processDocument(documentId: string): Promise<Document | nu
       return null;
     }
 
-    // Download the file locally to the cache directory
-    const localUri = `${FileSystem.cacheDirectory}processing_${documentId}.tmp`;
-    const { uri } = await FileSystem.downloadAsync(urlData.signedUrl, localUri);
-
-    // Read the file as base64 for Gemini
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    let base64 = '';
+    if (Platform.OS === 'web') {
+      const fileRes = await fetch(urlData.signedUrl);
+      const blob = await fileRes.blob();
+      base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          resolve(dataUrl.split(',')[1] || '');
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const localUri = `${FileSystem.cacheDirectory}processing_${documentId}.tmp`;
+      const { uri } = await FileSystem.downloadAsync(urlData.signedUrl, localUri);
+      base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
 
     const mimeType = doc.file_type === 'pdf' ? 'application/pdf' : 'image/jpeg';
 
