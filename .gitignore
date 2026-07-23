@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -43,4 +44,7 @@ scratch/
 inspect_db.js
 list_models.js
 test_models.js
-.env
+
+# Supabase local state
+supabase/.temp/
+supabase/.branches/

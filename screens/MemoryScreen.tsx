@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -9,10 +10,10 @@ import {
   SafeAreaView,
   RefreshControl,
   Modal,
-  FlatList,
-} from 'react-native';
+  FlatList } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Colors, Spacing, Radius, FontSize } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
+import GlassCard from '../components/GlassCard';
 import {
   loadSessionIndex,
   searchMemory,
@@ -21,8 +22,7 @@ import {
   getMemoryStats,
   clearAllMemory,
   SessionIndex,
-  MemorySession,
-} from '../services/memoryService';
+  MemorySession } from '../services/memoryService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,14 +38,13 @@ function formatDate(ts: number): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-function tagColor(tag: string): { bg: string; text: string } {
+function tagColor(tag: string, Colors: any): { bg: string; text: string } {
   const map: Record<string, { bg: string; text: string }> = {
     finance: { bg: Colors.secondaryFixed, text: Colors.onSecondaryFixed },
     insurance: { bg: Colors.primaryFixed, text: Colors.onPrimaryFixed },
     tax: { bg: Colors.errorContainer, text: Colors.onErrorContainer },
     health: { bg: Colors.tertiaryFixed, text: Colors.onTertiaryFixed },
-    reminder: { bg: Colors.surfaceContainerHigh, text: Colors.onSurface },
-  };
+    reminder: { bg: Colors.surfaceContainerHigh, text: Colors.onSurface } };
   return map[tag] ?? { bg: Colors.surfaceContainerHigh, text: Colors.onSurface };
 }
 
@@ -54,41 +53,44 @@ function tagColor(tag: string): { bg: string; text: string } {
 function SessionCard({
   session,
   onPress,
-  onDelete,
-}: {
+  onDelete }: {
   session: SessionIndex;
   onPress: () => void;
   onDelete: () => void;
 }) {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
   return (
-    <TouchableOpacity style={styles.sessionCard} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.sessionCardRow}>
-        {/* Date badge */}
-        <View style={styles.dateBadge}>
-          <Text style={styles.dateBadgeText}>{formatDate(session.updatedAt)}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+      <GlassCard style={styles.sessionCard}>
+        <View style={styles.sessionCardRow}>
+          {/* Date badge */}
+          <View style={styles.dateBadge}>
+            <Text style={styles.dateBadgeText}>{formatDate(session.updatedAt)}</Text>
+          </View>
+          {/* Delete */}
+          <TouchableOpacity onPress={onDelete} style={styles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.deleteBtnText}>✕</Text>
+          </TouchableOpacity>
         </View>
-        {/* Delete */}
-        <TouchableOpacity onPress={onDelete} style={styles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.deleteBtnText}>✕</Text>
-        </TouchableOpacity>
-      </View>
 
-      <Text style={styles.sessionTitle} numberOfLines={2}>{session.title}</Text>
-      <Text style={styles.sessionSummary} numberOfLines={2}>{session.summary}</Text>
+        <Text style={styles.sessionTitle} numberOfLines={2}>{session.title}</Text>
+        <Text style={styles.sessionSummary} numberOfLines={2}>{session.summary}</Text>
 
-      {/* Tags */}
-      {session.tags.length > 0 && (
-        <View style={styles.tagsRow}>
-          {session.tags.slice(0, 3).map(tag => {
-            const c = tagColor(tag);
-            return (
-              <View key={tag} style={[styles.tag, { backgroundColor: c.bg }]}>
-                <Text style={[styles.tagText, { color: c.text }]}>{tag}</Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
+        {/* Tags */}
+        {session.tags.length > 0 && (
+          <View style={styles.tagsRow}>
+            {session.tags.slice(0, 3).map(tag => {
+              const c = tagColor(tag, Colors);
+              return (
+                <View key={tag} style={[styles.tag, { backgroundColor: c.bg }]}>
+                  <Text style={[styles.tagText, { color: c.text }]}>{tag}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </GlassCard>
     </TouchableOpacity>
   );
 }
@@ -98,12 +100,13 @@ function SessionCard({
 function SessionModal({
   sessionId,
   onClose,
-  onAskAbout,
-}: {
+  onAskAbout }: {
   sessionId: string | null;
   onClose: () => void;
   onAskAbout: (title: string) => void;
 }) {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
   const [session, setSession] = useState<MemorySession | null>(null);
 
   useEffect(() => {
@@ -140,8 +143,7 @@ function SessionModal({
         <View style={styles.modalMeta}>
           <Text style={styles.modalMetaText}>
             {new Date(session.startedAt).toLocaleDateString('en-IN', {
-              weekday: 'long', day: 'numeric', month: 'long',
-            })}
+              weekday: 'long', day: 'numeric', month: 'long' })}
           </Text>
           <Text style={styles.modalMetaText}>
             {session.messages.length} messages
@@ -179,6 +181,9 @@ function SessionModal({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MemoryScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation();
 
   const [sessions, setSessions] = useState<SessionIndex[]>([]);
@@ -279,7 +284,7 @@ export default function MemoryScreen() {
         {stats.tags.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsRow}>
             {stats.tags.slice(0, 6).map(tag => {
-              const c = tagColor(tag);
+              const c = tagColor(tag, Colors);
               return (
                 <TouchableOpacity
                   key={tag}
@@ -347,6 +352,8 @@ export default function MemoryScreen() {
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ query, onStart }: { query: string; onStart: () => void }) {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
   return (
     <View style={styles.emptyState}>
       {/* Orb illustration */}
@@ -373,7 +380,7 @@ function EmptyState({ query, onStart }: { query: string; onStart: () => void }) 
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   ornamentTop: {
     position: 'absolute',
@@ -383,8 +390,7 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 120,
     backgroundColor: Colors.secondary,
-    opacity: 0.05,
-  },
+    opacity: 0.05 },
   ornamentMid: {
     position: 'absolute',
     top: '40%',
@@ -393,30 +399,25 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 140,
     backgroundColor: Colors.primaryFixedDim,
-    opacity: 0.08,
-  },
+    opacity: 0.08 },
   // Header
   header: {
     paddingHorizontal: Spacing.containerMobile,
     paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
-  },
+    paddingBottom: Spacing.sm },
   headerTitle: {
+    ...typography.displayLg,
     fontSize: 36,
-    fontWeight: '800',
     color: Colors.onSurface,
-    letterSpacing: -0.8,
-  },
+    letterSpacing: -0.8 },
   headerSubtitle: {
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     color: Colors.onSurfaceVariant,
-    marginTop: 4,
-  },
+    marginTop: 4 },
   // Search
   searchWrap: {
     paddingHorizontal: Spacing.containerMobile,
-    paddingBottom: Spacing.md,
-  },
+    paddingBottom: Spacing.md },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -431,135 +432,100 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
-  },
+    elevation: 2 },
   searchIcon: { fontSize: 16 },
   searchInput: {
     flex: 1,
-    fontSize: FontSize.bodyMd,
-    color: Colors.onSurface,
-  },
+    ...typography.bodyMd,
+    color: Colors.onSurface },
   searchClear: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: Colors.onSurfaceVariant,
-    padding: 4,
-  },
+    padding: 4 },
   // Scroll
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.containerMobile,
     paddingBottom: 120,
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   statsRow: {
-    marginBottom: Spacing.sm,
-  },
+    marginBottom: Spacing.sm },
   statChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     borderRadius: Radius.full,
-    marginRight: Spacing.sm,
-  },
+    marginRight: Spacing.sm },
   statChipText: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
+    ...typography.labelSm,
+    letterSpacing: 0.3 },
   sectionLabel: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '700',
+    ...typography.labelSm,
     color: Colors.onSurfaceVariant,
     letterSpacing: 2,
     textTransform: 'uppercase',
     marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
+    marginBottom: Spacing.xs },
   resultsLabel: {
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     color: Colors.onSurfaceVariant,
-    marginBottom: Spacing.sm,
-  },
+    marginBottom: Spacing.sm },
   // Session card — Stitch glass card
   sessionCard: {
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderRadius: Radius.xl,
     padding: Spacing.lg,
-    gap: Spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+    gap: Spacing.sm },
   sessionCardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   dateBadge: {
     backgroundColor: Colors.surfaceContainerHigh,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-  },
+    paddingVertical: 4 },
   dateBadgeText: {
-    fontSize: FontSize.labelSm,
-    color: Colors.onSurfaceVariant,
-    fontWeight: '600',
-  },
+    ...typography.labelSm,
+    color: Colors.onSurfaceVariant },
   deleteBtn: {
     width: 24,
     height: 24,
     borderRadius: 12,
     backgroundColor: Colors.surfaceContainerHigh,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   deleteBtnText: { fontSize: 10, color: Colors.onSurfaceVariant },
   sessionTitle: {
+    ...typography.headlineSm,
     fontSize: 16,
-    fontWeight: '700',
     color: Colors.onSurface,
-    lineHeight: 22,
-  },
+    lineHeight: 22 },
   sessionSummary: {
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     color: Colors.onSurfaceVariant,
-    lineHeight: 22,
-  },
+    lineHeight: 22 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
-    borderRadius: Radius.full,
-  },
+    borderRadius: Radius.full },
   tagText: {
+    ...typography.labelSm,
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
+    textTransform: 'uppercase' },
   // Clear button
   clearBtn: {
     alignItems: 'center',
     padding: Spacing.md,
-    marginTop: Spacing.md,
-  },
+    marginTop: Spacing.md },
   clearBtnText: {
-    fontSize: FontSize.labelSm,
+    ...typography.labelSm,
     color: Colors.error,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
+    letterSpacing: 0.5 },
   // Empty state
   emptyState: {
     alignItems: 'center',
     paddingTop: 60,
     paddingHorizontal: Spacing.xl,
-    gap: Spacing.md,
-  },
+    gap: Spacing.md },
   emptyOrb: {
     width: 96,
     height: 96,
@@ -567,21 +533,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondaryFixed,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
+    marginBottom: Spacing.sm },
   emptyOrbText: { fontSize: 40, color: Colors.secondary },
   emptyTitle: {
+    ...typography.headlineSm,
     fontSize: 22,
-    fontWeight: '700',
     color: Colors.onSurface,
-    textAlign: 'center',
-  },
+    textAlign: 'center' },
   emptyBody: {
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     color: Colors.onSurfaceVariant,
     textAlign: 'center',
-    lineHeight: 24,
-  },
+    lineHeight: 24 },
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -589,10 +552,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    marginTop: Spacing.sm,
-  },
-  emptyBtnText: { fontSize: FontSize.bodyMd, color: '#fff', fontWeight: '700' },
-  emptyBtnArrow: { fontSize: FontSize.bodyMd, color: '#fff' },
+    marginTop: Spacing.sm },
+  emptyBtnText: { ...typography.bodyMd, color: '#fff', fontWeight: '700' },
+  emptyBtnArrow: { ...typography.bodyMd, color: '#fff' },
   // FAB
   fab: {
     position: 'absolute',
@@ -609,8 +571,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 10,
-    zIndex: 50,
-  },
+    zIndex: 50 },
   fabText: { fontSize: 22, color: '#fff' },
   // Modal
   modalSafe: { flex: 1, backgroundColor: Colors.background },
@@ -621,47 +582,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.containerMobile,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-  },
+    borderBottomColor: Colors.glassBorder },
   modalCloseBtn: {
     paddingVertical: 6,
-    paddingHorizontal: Spacing.sm,
-  },
-  modalCloseBtnText: { fontSize: FontSize.bodyMd, color: Colors.secondary },
+    paddingHorizontal: Spacing.sm },
+  modalCloseBtnText: { ...typography.bodyMd, color: Colors.secondary },
   modalTitle: {
     flex: 1,
-    fontSize: 15,
+    ...typography.bodyMd,
     fontWeight: '700',
     color: Colors.onSurface,
     textAlign: 'center',
-    marginHorizontal: Spacing.sm,
-  },
+    marginHorizontal: Spacing.sm },
   modalAskBtn: {
     backgroundColor: Colors.secondary,
     borderRadius: Radius.full,
     paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-  },
-  modalAskBtnText: { fontSize: FontSize.labelSm, color: '#fff', fontWeight: '700' },
+    paddingHorizontal: Spacing.md },
+  modalAskBtnText: { ...typography.labelSm, color: '#fff' },
   modalMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.containerMobile,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surfaceContainerLow,
-  },
-  modalMetaText: { fontSize: FontSize.labelSm, color: Colors.onSurfaceVariant },
+    backgroundColor: Colors.surfaceContainerLow },
+  modalMetaText: { ...typography.labelSm, color: Colors.onSurfaceVariant },
   modalMessages: {
     paddingHorizontal: Spacing.containerMobile,
     paddingVertical: Spacing.md,
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   modalMsgRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
+    marginBottom: Spacing.sm },
   modalMsgRowUser: { justifyContent: 'flex-end' },
   modalMsgRowModel: { justifyContent: 'flex-start' },
   modalAvatar: {
@@ -670,22 +624,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.secondary,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   modalAvatarText: { fontSize: 10, color: '#fff' },
   modalBubble: {
     maxWidth: '78%',
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-  },
+    paddingVertical: 8 },
   modalBubbleUser: { backgroundColor: Colors.secondary, borderBottomRightRadius: 2 },
   modalBubbleModel: {
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderBottomLeftRadius: 2,
-  },
-  modalBubbleText: { fontSize: FontSize.bodyMd, color: Colors.onSurface, lineHeight: 22 },
-  modalBubbleTextUser: { color: '#fff' },
-});
+    backgroundColor: Colors.surfaceContainerHigh,
+    borderBottomLeftRadius: 2 },
+  modalBubbleText: { ...typography.bodyMd, color: Colors.onSurface, lineHeight: 22 },
+  modalBubbleTextUser: { color: '#fff' } });

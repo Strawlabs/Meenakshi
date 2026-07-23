@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -8,8 +9,7 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
+  RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
@@ -19,10 +19,10 @@ import {
   processDocument,
   getUserDocuments,
   deleteDocument,
-  Document,
-} from '../services/documentService';
+  Document } from '../services/documentService';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, Typography, FontSize } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
+import GlassCard from '../components/GlassCard';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -35,8 +35,7 @@ const TYPE_LABELS: Record<string, string> = {
   insurance: 'Insurance',
   rent_agreement: 'Rent / Lease',
   loan: 'Loan',
-  other: 'Other',
-};
+  other: 'Other' };
 
 const TYPE_ICONS: Record<string, string> = {
   salary_slip: '💰',
@@ -44,8 +43,7 @@ const TYPE_ICONS: Record<string, string> = {
   insurance: '🛡️',
   rent_agreement: '🏠',
   loan: '🏛️',
-  other: '📄',
-};
+  other: '📄' };
 
 function getDocIcon(docType: string | null) {
   return TYPE_ICONS[docType || 'other'] || '📄';
@@ -55,11 +53,13 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
-  });
+    year: 'numeric' });
 }
 
 export default function DocumentsScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation<NavProp>();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filtered, setFiltered] = useState<Document[]>([]);
@@ -105,8 +105,7 @@ export default function DocumentsScreen() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/*'],
-        copyToCacheDirectory: true,
-      });
+        copyToCacheDirectory: true });
 
       if (result.canceled || !result.assets?.length) return;
 
@@ -155,8 +154,7 @@ export default function DocumentsScreen() {
             } else {
               Alert.alert('Error', 'Could not delete document. Please try again.');
             }
-          },
-        },
+          } },
       ]
     );
   }
@@ -242,12 +240,11 @@ export default function DocumentsScreen() {
         ) : (
           <View style={styles.docList}>
             {filtered.map(doc => (
-              <TouchableOpacity
+              <GlassCard
                 key={doc.id}
                 style={styles.docCard}
                 onPress={() => navigation.navigate('DocumentDetail', { documentId: doc.id })}
                 onLongPress={() => confirmDelete(doc)}
-                activeOpacity={0.8}
               >
                 <View style={styles.docCardLeft}>
                   <View style={styles.docIconWrap}>
@@ -297,7 +294,7 @@ export default function DocumentsScreen() {
                 </View>
 
                 <Text style={styles.docChevron}>›</Text>
-              </TouchableOpacity>
+              </GlassCard>
             ))}
           </View>
         )}
@@ -308,7 +305,7 @@ export default function DocumentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   ornamentTopRight: {
     position: 'absolute',
@@ -318,8 +315,7 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     backgroundColor: Colors.secondary,
-    opacity: 0.05,
-  },
+    opacity: 0.05 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -328,29 +324,25 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     backgroundColor: `${Colors.surface}B3`,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
-  },
+    borderBottomColor: 'rgba(255,255,255,0.2)' },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surfaceContainerHigh,
-  },
+    backgroundColor: Colors.surfaceContainerHigh },
   headerBtnText: { fontSize: 24, color: Colors.onSurface, fontWeight: '300' },
   headerTitle: {
-    ...Typography.bodyMd,
+    ...typography.bodyMd,
     fontWeight: '700',
-    color: Colors.primary,
-  },
+    color: Colors.primary },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.containerMobile,
     paddingTop: Spacing.lg,
     paddingBottom: 100,
-    gap: Spacing.md,
-  },
+    gap: Spacing.md },
   // Upload zone
   uploadZone: {
     borderWidth: 2,
@@ -360,13 +352,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondaryFixed,
     paddingVertical: Spacing.xl,
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   uploadZoneLoading: {
     borderStyle: 'solid',
     backgroundColor: Colors.surfaceContainerLow,
-    borderColor: Colors.outlineVariant,
-  },
+    borderColor: Colors.outlineVariant },
   uploadIconWrap: {
     width: 56,
     height: 56,
@@ -374,43 +364,35 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
-  },
+    marginBottom: Spacing.xs },
   uploadIcon: { fontSize: 26 },
   uploadZoneTitle: {
-    ...Typography.bodyMd,
+    ...typography.bodyMd,
     fontWeight: '700',
-    color: Colors.onSecondaryFixed,
-  },
+    color: Colors.onSecondaryFixed },
   uploadZoneSub: {
-    ...Typography.labelSm,
-    color: `${Colors.onSecondaryFixed}99`,
-  },
+    ...typography.labelSm,
+    color: `${Colors.onSecondaryFixed}99` },
   // Filter chips
   filterRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
+    paddingVertical: Spacing.xs },
   filterChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     borderRadius: Radius.full,
     backgroundColor: Colors.surfaceContainerHigh,
     borderWidth: 1,
-    borderColor: Colors.outlineVariant,
-  },
+    borderColor: Colors.outlineVariant },
   filterChipActive: {
     backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
-  },
+    borderColor: Colors.secondary },
   filterChipText: {
-    ...Typography.labelSm,
-    color: Colors.onSurface,
-  },
+    ...typography.labelSm,
+    color: Colors.onSurface },
   filterChipTextActive: {
-    color: Colors.onSecondary,
-  },
+    color: Colors.onSecondary },
   // Loading
   loadingSpinner: { marginTop: Spacing.xl },
   // Empty
@@ -421,38 +403,24 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: Spacing.xl,
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   emptyIcon: { fontSize: 40, marginBottom: Spacing.xs },
   emptyTitle: {
-    ...Typography.bodyMd,
+    ...typography.bodyMd,
     fontWeight: '700',
     color: Colors.onSurface,
-    textAlign: 'center',
-  },
+    textAlign: 'center' },
   emptySub: {
-    ...Typography.labelSm,
+    ...typography.labelSm,
     color: Colors.onSurfaceVariant,
     textAlign: 'center',
-    lineHeight: 20,
-  },
+    lineHeight: 20 },
   // Document list
   docList: { gap: Spacing.sm },
   docCard: {
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+    gap: Spacing.md },
   docCardLeft: { paddingTop: 2 },
   docIconWrap: {
     width: 44,
@@ -460,88 +428,71 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: Colors.surfaceContainerHigh,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   docIcon: { fontSize: 22 },
   docCardContent: { flex: 1, gap: 4 },
   docCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    flexWrap: 'wrap',
-  },
+    flexWrap: 'wrap' },
   docFileName: {
-    ...Typography.bodyMd,
+    ...typography.bodyMd,
     fontWeight: '700',
     color: Colors.onSurface,
-    flex: 1,
-  },
+    flex: 1 },
   docTypeBadge: {
     backgroundColor: Colors.secondaryFixed,
     borderRadius: Radius.full,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
+    paddingVertical: 2 },
   docTypeBadgeText: {
     fontSize: 10,
     fontWeight: '700',
     color: Colors.onSecondaryFixed,
-    letterSpacing: 0.3,
-  },
+    letterSpacing: 0.3 },
   docDate: {
-    ...Typography.labelSm,
-    color: Colors.onSurfaceVariant,
-  },
+    ...typography.labelSm,
+    color: Colors.onSurfaceVariant },
   processingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: 4,
-  },
+    marginTop: 4 },
   processingText: {
-    ...Typography.labelSm,
-    color: Colors.secondary,
-  },
+    ...typography.labelSm,
+    color: Colors.secondary },
   docSummary: {
-    ...Typography.labelSm,
+    ...typography.labelSm,
     color: Colors.onSurfaceVariant,
     lineHeight: 18,
-    marginTop: 4,
-  },
+    marginTop: 4 },
   docMetaRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
     marginTop: 6,
-    flexWrap: 'wrap',
-  },
+    flexWrap: 'wrap' },
   metaChip: {
     backgroundColor: Colors.errorContainer,
     borderRadius: Radius.full,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
+    paddingVertical: 2 },
   metaChipText: {
     fontSize: 10,
     fontWeight: '600',
-    color: Colors.onErrorContainer,
-  },
+    color: Colors.onErrorContainer },
   metaChipGreen: {
-    backgroundColor: Colors.tertiaryFixed,
-  },
+    backgroundColor: Colors.tertiaryFixed },
   metaChipTextGreen: {
-    color: Colors.onTertiaryFixed,
-  },
+    color: Colors.onTertiaryFixed },
   docChevron: {
     fontSize: 22,
     color: Colors.secondary,
     opacity: 0.5,
-    alignSelf: 'center',
-  },
+    alignSelf: 'center' },
   longPressHint: {
-    ...Typography.labelSm,
+    ...typography.labelSm,
     color: Colors.onSurfaceVariant,
     opacity: 0.5,
     textAlign: 'center',
-    marginTop: Spacing.sm,
-  },
-});
+    marginTop: Spacing.sm } });

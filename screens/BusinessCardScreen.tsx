@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, Image, TextInput, ScrollView } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -5,13 +6,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, Typography } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
 import { parseBusinessCard, saveBusinessCard, updateContact, BusinessCardData } from '../services/businessCardService';
 
 type RoutePropType = RouteProp<RootStackParamList, 'BusinessCard'>;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function BusinessCardScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RoutePropType>();
   const origin = route.params?.origin;
@@ -31,8 +35,7 @@ export default function BusinessCardScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         quality: 0.5,
-        base64: true,
-      });
+        base64: true });
 
       if (!result.canceled && result.assets?.[0]?.base64) {
         const base64Str = result.assets[0].base64;
@@ -42,8 +45,7 @@ export default function BusinessCardScreen() {
           navigation.navigate({
             name: 'Chat',
             params: { scannedCardBase64: base64Str },
-            merge: true,
-          } as any);
+            merge: true } as any);
           return;
         }
         setPhotoUri(uri);
@@ -65,8 +67,7 @@ export default function BusinessCardScreen() {
         email: editContactData.email || '',
         phone: editContactData.phone || '',
         address: editContactData.address || '',
-        notes: editContactData.notes || '',
-      });
+        notes: editContactData.notes || '' });
     }
   }, [editContactId, editContactData]);
 
@@ -92,15 +93,13 @@ export default function BusinessCardScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           base64: true,
-          quality: 0.5,
-        });
+          quality: 0.5 });
         if (photo?.base64) {
           if (origin === 'chat') {
             navigation.navigate({
               name: 'Chat',
               params: { scannedCardBase64: photo.base64 },
-              merge: true,
-            } as any);
+              merge: true } as any);
             return;
           }
           setPhotoUri(photo.uri);
@@ -123,8 +122,7 @@ export default function BusinessCardScreen() {
         email: data.email || '',
         phone: data.phone || '',
         address: data.address || '',
-        notes: '',
-      });
+        notes: '' });
     } catch (err: any) {
       console.error('Failed to parse card:', err);
       alert('Failed to parse card. ' + err.message);
@@ -292,24 +290,22 @@ export default function BusinessCardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.containerMobile,
-    paddingVertical: Spacing.sm,
-  },
+    paddingVertical: Spacing.sm },
   headerBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.surfaceContainerHigh,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerBtnText: { fontSize: 24, color: Colors.onSurface, fontWeight: '300' },
-  headerTitle: { ...Typography.bodyMd, fontWeight: '700', color: Colors.onSurface },
+    alignItems: 'center', justifyContent: 'center' },
+  headerBtnText: { ...typography.headlineMdMobile, color: Colors.onSurface, fontWeight: '300' },
+  headerTitle: { ...typography.bodyMd, fontWeight: '700', color: Colors.onSurface },
   permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
-  permissionText: { ...Typography.bodyMd, color: Colors.onSurface, textAlign: 'center', marginBottom: Spacing.lg },
+  permissionText: { ...typography.bodyMd, color: Colors.onSurface, textAlign: 'center', marginBottom: Spacing.lg },
   btn: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: Radius.lg },
   btnText: { color: Colors.onPrimary, fontWeight: '700' },
   cameraContainer: { flex: 1, overflow: 'hidden', margin: Spacing.md, borderRadius: Radius.xl },
@@ -319,36 +315,32 @@ const styles = StyleSheet.create({
     width: '80%', height: '30%',
     borderWidth: 2, borderColor: Colors.primary,
     backgroundColor: 'transparent',
-    borderRadius: Radius.md,
-  },
+    borderRadius: Radius.md },
   controls: { height: 120, justifyContent: 'center', alignItems: 'center' },
   captureBtn: {
     width: 70, height: 70, borderRadius: 35,
     backgroundColor: 'transparent',
     borderWidth: 4, borderColor: Colors.primary,
-    justifyContent: 'center', alignItems: 'center',
-  },
+    justifyContent: 'center', alignItems: 'center' },
   captureBtnInner: {
     width: 54, height: 54, borderRadius: 27,
-    backgroundColor: Colors.primary,
-  },
+    backgroundColor: Colors.primary },
   processingContainer: { alignItems: 'center', gap: Spacing.sm },
-  processingText: { ...Typography.bodyMd, color: Colors.primary, fontWeight: '600' },
+  processingText: { ...typography.bodyMd, color: Colors.primary, fontWeight: '600' },
   formContainer: { padding: Spacing.lg, paddingBottom: 100 },
-  formLabel: { ...Typography.labelSm, color: Colors.textSecondary, marginBottom: 4, marginTop: Spacing.md },
-  input: { backgroundColor: Colors.glass, borderWidth: 1, borderColor: Colors.glassBorder, borderRadius: Radius.md, padding: Spacing.md, ...Typography.bodyMd, color: Colors.onSurface },
+  formLabel: { ...typography.labelSm, color: Colors.textSecondary, marginBottom: 4, marginTop: Spacing.md },
+  input: { backgroundColor: Colors.glass, borderWidth: 1, borderColor: Colors.glassBorder, borderRadius: Radius.md, padding: Spacing.md, ...typography.bodyMd, color: Colors.onSurface },
   actionRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xl },
   retakeBtn: { flex: 1, padding: Spacing.md, alignItems: 'center', borderRadius: Radius.md, backgroundColor: Colors.surfaceContainerHigh },
-  retakeBtnText: { ...Typography.bodyMd, fontWeight: '600', color: Colors.onSurface },
+  retakeBtnText: { ...typography.bodyMd, fontWeight: '600', color: Colors.onSurface },
   saveBtn: { flex: 2, padding: Spacing.md, alignItems: 'center', borderRadius: Radius.md, backgroundColor: Colors.primary },
-  saveBtnText: { ...Typography.bodyMd, fontWeight: '700', color: Colors.onPrimary },
+  saveBtnText: { ...typography.bodyMd, fontWeight: '700', color: Colors.onPrimary },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: Spacing.xl,
-  },
+    paddingHorizontal: Spacing.xl },
   galleryBtn: {
     width: 50,
     height: 50,
@@ -357,13 +349,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
+    borderColor: 'rgba(255,255,255,0.2)' },
   galleryBtnText: {
-    fontSize: 22,
-  },
+    fontSize: 22 },
   spacerBtn: {
     width: 50,
-    height: 50,
-  },
-});
+    height: 50 } });

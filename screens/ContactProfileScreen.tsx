@@ -1,9 +1,11 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, Typography } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
+import GlassCard from '../components/GlassCard';
 import { getContactProfile, generateRelationshipSummary } from '../services/relationshipService';
 import { parseManualFollowUp } from '../services/followUpService';
 import supabase from '../lib/supabase';
@@ -12,6 +14,9 @@ type RouteType = RouteProp<RootStackParamList, 'ContactProfile'>;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ContactProfileScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteType>();
   const { contactId } = route.params;
@@ -66,8 +71,7 @@ export default function ContactProfileScreen() {
         email: contact.email,
         phone: contact.phone,
         address: contact.address,
-        notes: contact.notes,
-      }
+        notes: contact.notes }
     });
   };
 
@@ -131,7 +135,7 @@ export default function ContactProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Profile Card */}
-        <View style={styles.card}>
+        <GlassCard style={styles.card}>
           <View style={styles.avatarRow}>
             <TouchableOpacity style={styles.avatar} onPress={handleEditContact}>
               <Text style={styles.avatarText}>{initials}</Text>
@@ -147,15 +151,15 @@ export default function ContactProfileScreen() {
             {contact.phone && <Text style={styles.detailText}>📱 {contact.phone}</Text>}
             {contact.address && <Text style={styles.detailText}>📍 {contact.address}</Text>}
           </View>
-        </View>
+        </GlassCard>
 
         {/* How we met / Notes */}
         {contact.notes ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>HOW WE MET & RELATIONSHIP CONTEXT</Text>
-            <View style={styles.notesCard}>
+            <GlassCard style={styles.notesCard}>
               <Text style={styles.notesText}>{contact.notes}</Text>
-            </View>
+            </GlassCard>
           </View>
         ) : null}
 
@@ -163,9 +167,9 @@ export default function ContactProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI RELATIONSHIP SUMMARY</Text>
           {summary ? (
-            <View style={styles.summaryCard}>
+            <GlassCard style={styles.summaryCard}>
               <Text style={styles.summaryText}>{summary}</Text>
-            </View>
+            </GlassCard>
           ) : (
             <TouchableOpacity style={styles.actionBtn} onPress={getSummary} disabled={loadingSummary}>
               {loadingSummary ? (
@@ -201,10 +205,10 @@ export default function ContactProfileScreen() {
             <Text style={styles.emptyText}>No pending tasks.</Text>
           ) : (
             followUps.map((f: any) => (
-              <View key={f.id} style={styles.listItem}>
+              <GlassCard key={f.id} style={styles.listItem}>
                 <Text style={styles.listItemTitle}>{f.description}</Text>
                 {f.due_date && <Text style={styles.listItemSub}>{new Date(f.due_date).toLocaleDateString()}</Text>}
-              </View>
+              </GlassCard>
             ))
           )}
         </View>
@@ -216,10 +220,10 @@ export default function ContactProfileScreen() {
             <Text style={styles.emptyText}>No emails linked yet.</Text>
           ) : (
             emails.map((e: any) => (
-              <View key={e.id} style={styles.listItem}>
+              <GlassCard key={e.id} style={styles.listItem}>
                 <Text style={styles.listItemTitle}>{e.subject}</Text>
                 <Text style={styles.listItemSub}>{new Date(e.received_at).toLocaleDateString()} • {e.category}</Text>
-              </View>
+              </GlassCard>
             ))
           )}
         </View>
@@ -228,10 +232,10 @@ export default function ContactProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  errorText: { ...Typography.bodyMd, color: Colors.textSecondary, marginBottom: Spacing.md },
+  errorText: { ...typography.bodyMd, color: Colors.textSecondary, marginBottom: Spacing.md },
   backBtn: { backgroundColor: Colors.surfaceContainerHigh, padding: Spacing.sm, borderRadius: Radius.md },
   backBtnText: { color: Colors.onSurface },
   header: {
@@ -239,40 +243,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.containerMobile,
-    paddingVertical: Spacing.sm,
-  },
+    paddingVertical: Spacing.sm },
   headerBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.surfaceContainerHigh,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerBtnText: { fontSize: 24, color: Colors.onSurface, fontWeight: '300' },
-  headerTitle: { ...Typography.bodyMd, fontWeight: '700', color: Colors.onSurface },
+    alignItems: 'center', justifyContent: 'center' },
+  headerBtnText: { ...typography.headlineMdMobile, color: Colors.onSurface, fontWeight: '300' },
+  headerTitle: { ...typography.bodyMd, fontWeight: '700', color: Colors.onSurface },
   content: { padding: Spacing.containerMobile, gap: Spacing.xl, paddingBottom: 100 },
-  card: { backgroundColor: Colors.glass, padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.glassBorder },
+  card: { padding: Spacing.lg },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 20, fontWeight: '800', color: Colors.onPrimary },
+  avatarText: { ...typography.headlineSm, fontWeight: '800', color: Colors.onPrimary },
   info: { flex: 1 },
-  name: { ...Typography.headlineSm, color: Colors.onSurface },
-  role: { ...Typography.bodySm, color: Colors.textSecondary },
+  name: { ...typography.headlineSm, color: Colors.onSurface },
+  role: { ...typography.bodySm, color: Colors.onSurfaceVariant },
   contactDetails: { gap: Spacing.xs, marginTop: Spacing.xs },
-  detailText: { ...Typography.bodySm, color: Colors.onSurface },
+  detailText: { ...typography.bodySm, color: Colors.onSurface },
   section: { gap: Spacing.sm },
-  sectionTitle: { ...Typography.labelSm, color: Colors.onSurfaceVariant, letterSpacing: 1.5 },
-  actionBtn: { backgroundColor: 'rgba(107, 56, 212, 0.1)', padding: Spacing.md, borderRadius: Radius.lg, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(107, 56, 212, 0.2)' },
-  actionBtnText: { ...Typography.bodyMd, fontWeight: '700', color: Colors.purple },
-  summaryCard: { backgroundColor: 'rgba(107, 56, 212, 0.05)', padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, borderColor: 'rgba(107, 56, 212, 0.1)' },
-  summaryText: { ...Typography.bodyMd, color: Colors.onSurface, lineHeight: 24 },
-  listItem: { backgroundColor: Colors.glass, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.glassBorder },
-  listItemTitle: { ...Typography.bodyMd, color: Colors.onSurface, fontWeight: '500' },
-  listItemSub: { ...Typography.bodySm, color: Colors.textSecondary, marginTop: 4 },
-  emptyText: { ...Typography.bodySm, color: Colors.textMuted, fontStyle: 'italic' },
+  sectionTitle: { ...typography.labelSm, color: Colors.onSurfaceVariant, letterSpacing: 1.5 },
+  actionBtn: { backgroundColor: 'rgba(12, 148, 136, 0.1)', padding: Spacing.md, borderRadius: Radius.lg, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(12, 148, 136, 0.2)' },
+  actionBtnText: { ...typography.bodyMd, fontWeight: '700', color: Colors.primary },
+  summaryCard: { padding: Spacing.md },
+  summaryText: { ...typography.bodyMd, color: Colors.onSurface, lineHeight: 24 },
+  listItem: { padding: Spacing.md },
+  listItemTitle: { ...typography.bodyMd, color: Colors.onSurface, fontWeight: '500' },
+  listItemSub: { ...typography.bodySm, color: Colors.onSurfaceVariant, marginTop: 4 },
+  emptyText: { ...typography.bodySm, color: Colors.onSurfaceVariant, fontStyle: 'italic' },
   addFollowUpRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm },
-  addFollowUpInput: { flex: 1, backgroundColor: Colors.glass, borderWidth: 1, borderColor: Colors.glassBorder, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, ...Typography.bodyMd, color: Colors.onSurface },
+  addFollowUpInput: { flex: 1, backgroundColor: Colors.surfaceContainerHighest, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, ...typography.bodyMd, color: Colors.onSurface },
   addBtn: { width: 44, height: 44, backgroundColor: Colors.primary, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { color: Colors.onPrimary, fontSize: 24, fontWeight: '300', marginTop: -2 },
-  avatarEditHint: { fontSize: 8, color: Colors.onPrimary, position: 'absolute', bottom: 4, fontWeight: '600', opacity: 0.8 },
-  notesCard: { backgroundColor: Colors.glass, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.glassBorder },
-  notesText: { ...Typography.bodyMd, color: Colors.onSurface, lineHeight: 20 },
-});
+  addBtnText: { color: Colors.onPrimary, ...typography.headlineMdMobile, fontWeight: '300', marginTop: -2 },
+  avatarEditHint: { ...typography.labelSm, color: Colors.onPrimary, position: 'absolute', bottom: 4, fontWeight: '600', opacity: 0.8 },
+  notesCard: { padding: Spacing.md },
+  notesText: { ...typography.bodyMd, color: Colors.onSurface, lineHeight: 20 } });
