@@ -16,6 +16,7 @@ export interface TimelineEvent {
   icon: string;       // Category-based emoji
   type: 'credit' | 'debit';
   category: string;
+  source_type?: string;
   rawDate: string;
 }
 
@@ -32,26 +33,38 @@ const CATEGORY_STYLES: Record<string, { icon: string; type: 'credit' | 'debit'; 
   notice: { icon: '⚠️', type: 'debit', label: 'Official Notice' },
   approval: { icon: '✅', type: 'credit', label: 'Approval' },
   other: { icon: '✉️', type: 'debit', label: 'Update' },
+  bank_transaction: { icon: '🏦', type: 'debit', label: 'Bank Transaction' },
+};
+
+const TXN_MODE_ICONS: Record<string, string> = {
+  UPI: '📲',
+  NEFT: '🏦',
+  IMPS: '⚡',
+  RTGS: '🏛️',
+  ATM: '🏧',
+  CARD: '💳',
+  FT: '↔️',
+  CASH: '💵',
+  OTHERS: '🔄',
 };
 
 /**
- * Fetch and format email events for the Wealth Timeline.
+ * Fetch email events from the DB and format them for the Wealth Timeline.
  */
-export async function getFinancialEvents(categoryFilter = 'all'): Promise<TimelineEvent[]> {
+async function getEmailEvents(categoryFilter: string): Promise<TimelineEvent[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
   let query = supabase
     .from('email_events')
-    .select('id, received_at, category, amount, due_date, subject, ai_summary, sender_name, entity_email_links(entities(name))')
+    .select('id, received_at, category, amount, due_date, subject, ai_summary, sender_name, source_type, entity_email_links(entities(name))')
     .eq('user_id', user.id)
     .eq('is_duplicate', false);
 
   if (categoryFilter && categoryFilter !== 'all') {
     query = query.eq('category', categoryFilter.toLowerCase());
   } else {
-    // Default to showing core financial categories on the Wealth timeline
-    query = query.in('category', ['salary', 'emi', 'credit_card', 'insurance', 'tax', 'investment', 'loan', 'bill', 'renewal', 'notice', 'approval']);
+    query = query.in('category', ['salary', 'emi', 'credit_card', 'insurance', 'tax', 'investment', 'loan', 'bill', 'renewal', 'notice', 'approval', 'bank_transaction']);
   }
 
   const { data: events, error } = await query
@@ -65,48 +78,101 @@ export async function getFinancialEvents(categoryFilter = 'all'): Promise<Timeli
 
   return events.map((event: any) => {
     const style = CATEGORY_STYLES[event.category] || { icon: '✉️', type: 'debit', label: 'Notification' };
-    
-    // Group received_at date
     const dateObj = new Date(event.received_at);
-    const dateText = dateObj.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-    });
-
+    const dateText = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     const amountVal = event.amount ? Number(event.amount) : 0;
-    const amountText = amountVal > 0 
-      ? `${style.type === 'credit' ? '+' : '-'}\u20B9${amountVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` 
+    const amountText = amountVal > 0
+      ? `${style.type === 'credit' ? '+' : '-'}\u20B9${amountVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
       : '';
-
-    // Build subtitle combining Bank and Due Dates
     const subtitleParts = [];
     const entityName = event.entity_email_links?.[0]?.entities?.name || event.sender_name;
-    if (entityName) {
-      subtitleParts.push(entityName);
-    }
-    
+    if (entityName) subtitleParts.push(entityName);
     if (event.due_date) {
       const dueObj = new Date(event.due_date);
-      const dueText = dueObj.toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-      });
-      subtitleParts.push(`Due ${dueText}`);
+      subtitleParts.push(`Due ${dueObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`);
     }
-
     return {
       id: event.id,
       date: dateText,
-      title: style.label,
+      title: event.source_type === 'sandbox_mock' ? `[Sandbox] ${style.label}` : style.label,
       subtitle: subtitleParts.join(' • ') || 'Email Update',
       amount: amountText,
       description: event.ai_summary || event.subject || 'No summary available.',
-      icon: style.icon,
+      icon: event.source_type === 'account_aggregator' ? '🏦' : style.icon,
       type: style.type,
       category: event.category,
+      source_type: event.source_type,
       rawDate: event.received_at,
     };
   });
+}
+
+/**
+ * Fetch real bank transactions from AA data (bank_transactions table).
+ */
+async function getAABankTransactions(limit = 50): Promise<TimelineEvent[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: txns, error } = await supabase
+    .from('bank_transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('transaction_timestamp', { ascending: false })
+    .limit(limit);
+
+  if (error || !txns || txns.length === 0) {
+    if (error) console.error('[financialTimelineService] bank_transactions fetch error:', error);
+    return [];
+  }
+
+  console.log(`[financialTimelineService] Loaded ${txns.length} AA bank transactions`);
+
+  return txns.map((txn: any) => {
+    const isCredit = txn.txn_type === 'CREDIT';
+    const dateObj = txn.transaction_timestamp ? new Date(txn.transaction_timestamp) : new Date();
+    const dateText = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const modeIcon = TXN_MODE_ICONS[txn.mode?.toUpperCase()] || '🔄';
+    const amountVal = txn.amount ? Number(txn.amount) : 0;
+    const amountText = amountVal > 0
+      ? `${isCredit ? '+' : '-'}\u20B9${amountVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+      : '';
+    // Parse narration for a clean title: "UPI/CR/.../<Name>/..." → "<Name>"
+    const narrationParts = (txn.narration || '').split('/');
+    const payeeName = narrationParts.length >= 4 ? narrationParts[3]?.trim() : null;
+    return {
+      id: txn.id,
+      date: dateText,
+      title: isCredit ? 'Bank Credit' : 'Bank Debit',
+      subtitle: [txn.masked_account_number, payeeName, txn.mode].filter(Boolean).join(' • '),
+      amount: amountText,
+      description: txn.narration || 'Bank transaction via Account Aggregator',
+      icon: modeIcon,
+      type: isCredit ? 'credit' : 'debit' as 'credit' | 'debit',
+      category: 'bank_transaction',
+      source_type: 'account_aggregator',
+      rawDate: txn.transaction_timestamp || txn.created_at,
+    };
+  });
+}
+
+/**
+ * Fetch and format email events for the Wealth Timeline.
+ * Merges email_events with real AA bank_transactions.
+ */
+export async function getFinancialEvents(categoryFilter = 'all'): Promise<TimelineEvent[]> {
+  const [emailEvents, aaTransactions] = await Promise.all([
+    getEmailEvents(categoryFilter),
+    // Only fetch AA transactions when viewing 'all' or 'bank_transaction'
+    (categoryFilter === 'all' || categoryFilter === 'bank_transaction')
+      ? getAABankTransactions(50)
+      : Promise.resolve([]),
+  ]);
+
+  // Merge and sort by rawDate descending
+  const merged = [...emailEvents, ...aaTransactions];
+  merged.sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+  return merged.slice(0, 100);
 }
 
 export async function getFinancialTimeline(userId: string, limit: number = 50) {

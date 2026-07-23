@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -10,21 +11,19 @@ import {
   Platform,
   SafeAreaView,
   ActivityIndicator,
-  Animated,
-} from 'react-native';
+  Animated } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
 import { generateGeminiContent } from '../services/geminiService';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, Typography } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
 import { buildSystemPrompt } from '../services/systemPromptService';
 import {
   saveSession,
   buildMemoryContext,
   buildEmailContext,
-  MemoryMessage,
-} from '../services/memoryService';
+  MemoryMessage } from '../services/memoryService';
 import { detectFollowUps } from '../services/followUpService';
 import { saveBusinessCard } from '../services/businessCardService';
 import { getLatestSnapshot } from '../services/financialHealthService';
@@ -53,6 +52,9 @@ const QUICK_PROMPTS = [
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ChatScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteType>();
   const initialQuery = route.params?.initialQuery;
@@ -62,8 +64,7 @@ export default function ChatScreen() {
       id: '0',
       role: 'model',
       text: "Hello! I'm Meenakshi — your AI memory and financial companion. I remember our past conversations, so feel free to continue right where we left off.",
-      timestamp: Date.now(),
-    },
+      timestamp: Date.now() },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -115,8 +116,7 @@ export default function ChatScreen() {
         const mem: MemoryMessage[] = msgs.map(m => ({
           role: m.role,
           text: m.text,
-          timestamp: m.timestamp,
-        }));
+          timestamp: m.timestamp }));
         saveSession(mem, sessionIdRef.current).catch(() => {});
       }
     };
@@ -137,8 +137,7 @@ export default function ChatScreen() {
       id: Date.now().toString(),
       role: 'user',
       text,
-      timestamp: Date.now(),
-    };
+      timestamp: Date.now() };
 
     setMessages(prev => [...prev, userMsg]);
     scrollToBottom();
@@ -203,9 +202,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
           model: 'gemini-3-flash-preview',
           imagePart: {
             mimeType: 'image/jpeg',
-            data: scannedCardBase64,
-          },
-        });
+            data: scannedCardBase64 } });
 
         let parsedRes: any;
         try {
@@ -224,8 +221,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
         // Regular chat flow
         const response = await generateGeminiContent(text, {
           systemInstruction: enrichedSystemPrompt,
-          model: 'gemini-3-flash-preview',
-        });
+          model: 'gemini-3-flash-preview' });
         responseText = response;
       }
 
@@ -233,8 +229,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
         id: (Date.now() + 1).toString(),
         role: 'model',
         text: responseText || "I couldn't process that. Please try again.",
-        timestamp: Date.now(),
-      };
+        timestamp: Date.now() };
 
       setMessages(prev => [...prev, modelMsg]);
 
@@ -245,8 +240,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
         const mem: MemoryMessage[] = real.map(m => ({
           role: m.role,
           text: m.text,
-          timestamp: m.timestamp,
-        }));
+          timestamp: m.timestamp }));
         saveSession(mem, sessionIdRef.current).then(id => {
           if (!sessionIdRef.current) {
             sessionIdRef.current = id;
@@ -270,8 +264,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
           id: (Date.now() + 1).toString(),
           role: 'model',
           text: `⚠️ ${err?.message || 'Something went wrong. Check your API key.'}`,
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now() },
       ]);
     } finally {
       setIsLoading(false);
@@ -286,8 +279,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/*'],
-        copyToCacheDirectory: true,
-      });
+        copyToCacheDirectory: true });
 
       if (result.canceled || !result.assets?.length) return;
 
@@ -311,8 +303,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
             id: Date.now().toString(),
             role: 'model',
             text: `I've successfully uploaded and processed your document "${processed.file_name}". You can now ask me questions about it!`,
-            timestamp: Date.now(),
-          }
+            timestamp: Date.now() }
         ]);
         scrollToBottom();
       }
@@ -469,6 +460,9 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
 // ─── Typing dots ─────────────────────────────────────────────────────────────
 
 function TypingDots() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const dots = [0, 200, 400].map(delay => {
     const anim = useRef(new Animated.Value(0)).current;
     useEffect(() => {
@@ -492,8 +486,7 @@ function TypingDots() {
             styles.dot,
             {
               opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-              transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
-            },
+              transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }] },
           ]}
         />
       ))}
@@ -503,7 +496,7 @@ function TypingDots() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },
   ornament: {
@@ -514,8 +507,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     backgroundColor: Colors.secondary,
-    opacity: 0.04,
-  },
+    opacity: 0.04 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -524,16 +516,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     backgroundColor: `${Colors.surface}B3`,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
-  },
+    borderBottomColor: 'rgba(255,255,255,0.2)' },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surfaceContainerHigh,
-  },
+    backgroundColor: Colors.surfaceContainerHigh },
   headerBtnText: { fontSize: 24, color: Colors.onSurface, fontWeight: '300' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   headerOrb: {
@@ -542,22 +532,19 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: Colors.secondary,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   headerOrbText: { fontSize: 14, color: Colors.onSecondary },
-  headerTitle: { ...Typography.bodyMd, fontWeight: '700', color: Colors.primary },
-  headerStatus: { ...Typography.labelSm, color: Colors.secondary },
+  headerTitle: { ...typography.bodyMd, fontWeight: '700', color: Colors.primary },
+  headerStatus: { ...typography.labelSm, color: Colors.secondary },
   messageList: {
     paddingHorizontal: Spacing.containerMobile,
     paddingVertical: Spacing.md,
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   msgRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
+    marginBottom: Spacing.sm },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowModel: { justifyContent: 'flex-start' },
   modelAvatar: {
@@ -567,19 +554,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
+    flexShrink: 0 },
   modelAvatarText: { fontSize: 11, color: Colors.onSecondary },
   bubble: {
     maxWidth: '78%',
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-  },
+    paddingVertical: 10 },
   bubbleUser: {
     backgroundColor: Colors.secondary,
-    borderBottomRightRadius: 4,
-  },
+    borderBottomRightRadius: 4 },
   bubbleModel: {
     backgroundColor: Colors.glass,
     borderWidth: 1,
@@ -589,17 +573,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 1,
-  },
-  bubbleText: { ...Typography.bodyMd, color: Colors.onSurface },
+    elevation: 1 },
+  bubbleText: { ...typography.bodyMd, color: Colors.onSurface },
   bubbleTextUser: { color: Colors.onSecondary },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.sm,
     marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.containerMobile,
-  },
+    paddingHorizontal: Spacing.containerMobile },
   loadingBubble: {
     backgroundColor: Colors.glass,
     borderRadius: Radius.lg,
@@ -607,8 +589,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassBorder,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-  },
+    paddingVertical: 14 },
   typingDots: { flexDirection: 'row', gap: 5, alignItems: 'center' },
   dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.secondary },
   quickPrompts: {
@@ -616,18 +597,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.containerMobile,
-    paddingBottom: Spacing.sm,
-  },
+    paddingBottom: Spacing.sm },
   quickChip: {
     backgroundColor: Colors.secondaryFixed,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-  },
+    paddingVertical: 8 },
   quickChipText: {
-    ...Typography.labelSm,
-    color: Colors.onSecondaryFixed,
-  },
+    ...typography.labelSm,
+    color: Colors.onSecondaryFixed },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -636,8 +614,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.3)',
-    backgroundColor: `${Colors.surface}B3`,
-  },
+    backgroundColor: `${Colors.surface}B3` },
   input: {
     flex: 1,
     backgroundColor: Colors.glass,
@@ -647,10 +624,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingTop: 12,
     paddingBottom: 12,
-    ...Typography.bodyMd,
+    ...typography.bodyMd,
     color: Colors.onSurface,
-    maxHeight: 120,
-  },
+    maxHeight: 120 },
   sendBtn: {
     width: 44,
     height: 44,
@@ -662,10 +638,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    elevation: 4,
-  },
+    elevation: 4 },
   sendBtnDisabled: { backgroundColor: Colors.surfaceContainerHighest },
-  sendBtnText: { ...Typography.bodyLg, fontWeight: '700', color: Colors.onSecondary },
+  sendBtnText: { ...typography.bodyLg, fontWeight: '700', color: Colors.onSecondary },
   cameraBtn: {
     width: 44,
     height: 44,
@@ -674,11 +649,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassBorder,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   cameraBtnText: {
-    fontSize: 18,
-  },
+    fontSize: 18 },
   attachmentBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -687,20 +660,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(107, 56, 212, 0.2)',
     paddingVertical: 10,
-    paddingHorizontal: Spacing.containerMobile,
-  },
+    paddingHorizontal: Spacing.containerMobile },
   attachmentText: {
-    ...Typography.bodySm,
-    color: Colors.purple,
+    ...typography.bodySm,
+    color: Colors.primary,
     flex: 1,
-    marginRight: Spacing.sm,
-  },
+    marginRight: Spacing.sm },
   attachmentCloseBtn: {
-    padding: 4,
-  },
+    padding: 4 },
   attachmentCloseText: {
     color: Colors.purple,
     fontSize: 14,
-    fontWeight: 'bold',
-  },
-});
+    fontWeight: 'bold' } });

@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -5,11 +6,10 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
-} from 'react-native';
+  Dimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Typography } from '../constants/theme';
+import { Spacing } from '../constants/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Splash'>;
@@ -18,6 +18,9 @@ type Props = {
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen({ navigation }: Props) {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -29,13 +32,11 @@ export default function SplashScreen({ navigation }: Props) {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
-      }),
+        useNativeDriver: true }),
       Animated.timing(contentFade, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
-      }),
+        useNativeDriver: true }),
     ]).start();
 
     // Breathing orb — matches Stitch @keyframes breath
@@ -45,14 +46,12 @@ export default function SplashScreen({ navigation }: Props) {
           toValue: 1.05,
           duration: 2000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 2000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
       ])
     ).start();
 
@@ -63,14 +62,12 @@ export default function SplashScreen({ navigation }: Props) {
           toValue: 1.4,
           duration: 2000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
         Animated.timing(glowScale, {
           toValue: 1,
           duration: 2000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
       ])
     ).start();
 
@@ -127,30 +124,27 @@ export default function SplashScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.primaryContainer,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-  },
+    overflow: 'hidden' },
   // Layered circles to approximate radial-gradient(#6b38d4 → #131b2e)
   radialOuter: {
     position: 'absolute',
     width: width * 1.6,
     height: width * 1.6,
     borderRadius: width * 0.8,
-    backgroundColor: Colors.primaryContainer,
-  },
+    backgroundColor: Colors.primaryContainer },
   radialMid: {
     position: 'absolute',
     width: width,
     height: width,
     borderRadius: width / 2,
     backgroundColor: Colors.secondaryContainer,
-    opacity: 0.7,
-  },
+    opacity: 0.7 },
   radialInner: {
     position: 'absolute',
     width: width * 0.5,
@@ -158,16 +152,14 @@ const styles = StyleSheet.create({
     borderRadius: width * 0.25,
     backgroundColor: Colors.secondary,
     opacity: 0.3,
-    top: height * 0.28,
-  },
+    top: height * 0.28 },
   // Stitch .ai-pulse
   ambientPulse: {
     position: 'absolute',
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(132, 85, 239, 0.3)',
-  },
+    backgroundColor: 'rgba(132, 85, 239, 0.3)' },
   // Stitch .glass-container
   glassContainer: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -179,14 +171,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.lg,
     maxWidth: 360,
-    width: '88%',
-  },
+    width: '88%' },
   // Orb wrap for breathing transform
   orbWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
+    marginBottom: Spacing.sm },
   // Outer glow ring
   orbGlowRing: {
     position: 'absolute',
@@ -200,8 +190,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 24,
-    elevation: 12,
-  },
+    elevation: 12 },
   orb: {
     width: 88,
     height: 88,
@@ -214,32 +203,25 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
-    elevation: 10,
-  },
+    elevation: 10 },
   orbIcon: {
     fontSize: 36,
-    color: Colors.onSecondary,
-  },
+    color: Colors.onSecondary },
   textBlock: {
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   brandName: {
-    ...Typography.headlineLgMobile,
+    ...typography.headlineLgMobile,
     color: Colors.primaryFixed,
-    textAlign: 'center',
-  },
+    letterSpacing: -0.5 },
   tagline: {
-    ...Typography.bodyMd,
-    color: Colors.onPrimaryContainer,
+    ...typography.bodyMd,
+    color: Colors.primaryFixedDim,
     textAlign: 'center',
-    maxWidth: 240,
-  },
+    maxWidth: 240 },
   footer: {
     position: 'absolute',
     bottom: 40,
-    ...Typography.labelSm,
-    color: Colors.onPrimaryContainer,
-    textTransform: 'uppercase',
-  },
-});
+    ...typography.labelSm,
+    color: `${Colors.primaryFixedDim}99`,
+    textTransform: 'uppercase' } });

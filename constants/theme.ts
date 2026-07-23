@@ -1,10 +1,13 @@
 // ============================================================
 // Stitch Design System Tokens — Meenakshi AI
-// Source: Stitch design export (canonical UI/UX reference)
+// Light: Ambient Intelligence System
+// Dark: Kinetic Finance
 // ============================================================
 
-export const Colors = {
-  // ---- Stitch Core Palette ----
+export type ThemeColors = typeof LightColors;
+
+export const LightColors = {
+  // ---- Core Palette ----
   primary: '#000000',
   onPrimary: '#ffffff',
   primaryContainer: '#131b2e',
@@ -60,41 +63,95 @@ export const Colors = {
   inversePrimary: '#bec6e0',
   surfaceTint: '#565e74',
 
-  // ---- Dark mode (voice screen) ----
-  // Primary container used as dark bg
-  darkBg: '#131b2e',
-
   // ---- Computed helpers ----
   glass: 'rgba(255,255,255,0.70)',
   glassBorder: 'rgba(255,255,255,0.50)',
   glassPanel: 'rgba(255,255,255,0.05)',
   glassPanelBorder: 'rgba(255,255,255,0.10)',
   secondaryGlow: 'rgba(107,56,212,0.4)',
-  secondaryFaint: 'rgba(107,56,212,0.10)',
+  secondaryFaint: 'rgba(14, 165, 233, 0.1)',
 
-  // ---- Backward compatibility aliases (old dark-theme names → Stitch tokens) ----
-  bg: '#faf9f6',
-  bgCard: 'rgba(255,255,255,0.70)',
-  bgCardAlt: '#e9e8e5',
-  bgGlass: 'rgba(255,255,255,0.05)',
-  purple: '#6b38d4',
-  purpleLight: '#8455ef',
-  purpleFaint: '#e9ddff',
-  purpleGlow: '#d0bcff',
-  accent: '#6b38d4',
-  textPrimary: '#1a1c1a',
-  textSecondary: '#45464d',
-  textMuted: '#76777d',
-  border: '#c6c6cd',
-  borderStrong: '#76777d',
-  green: '#6bd8cb',
-  greenFaint: '#00201d',
-  amber: '#ba1a1a',
-  amberFaint: '#ffdad6',
-  red: '#ba1a1a',
-  redFaint: '#ffdad6',
+  // Legacy Aliases
+  purple: '#8B5CF6',
+  purpleLight: 'rgba(139, 92, 246, 0.15)',
+  bgCardAlt: 'rgba(255,255,255,0.05)',
+  textMuted: '#9CA3AF',
 };
 
+export const DarkColors: ThemeColors = {
+  // ---- Core Palette ----
+  primary: '#c0c1ff',
+  onPrimary: '#1000a9',
+  primaryContainer: '#8083ff',
+  onPrimaryContainer: '#0d0096',
+  primaryFixed: '#e1e0ff',
+  primaryFixedDim: '#c0c1ff',
+  onPrimaryFixed: '#07006c',
+  onPrimaryFixedVariant: '#2f2ebe',
+
+  secondary: '#d0bcff',
+  onSecondary: '#3c0091',
+  secondaryContainer: '#571bc1',
+  onSecondaryContainer: '#c4abff',
+  secondaryFixed: '#e9ddff',
+  secondaryFixedDim: '#d0bcff',
+  onSecondaryFixed: '#23005c',
+  onSecondaryFixedVariant: '#5516be',
+
+  tertiary: '#66dd8b',
+  onTertiary: '#003919',
+  tertiaryContainer: '#25a55a',
+  onTertiaryContainer: '#003115',
+  tertiaryFixed: '#83fba5',
+  tertiaryFixedDim: '#66dd8b',
+  onTertiaryFixed: '#00210c',
+  onTertiaryFixedVariant: '#005227',
+
+  error: '#ffb4ab',
+  onError: '#690005',
+  errorContainer: '#93000a',
+  onErrorContainer: '#ffdad6',
+
+  // ---- Surfaces ----
+  background: '#0b1326',
+  onBackground: '#dae2fd',
+  surface: '#0b1326',
+  surfaceBright: '#31394d',
+  surfaceDim: '#0b1326',
+  surfaceVariant: '#2d3449',
+  onSurface: '#dae2fd',
+  onSurfaceVariant: '#c7c4d7',
+  surfaceContainer: '#171f33',
+  surfaceContainerLow: '#131b2e',
+  surfaceContainerHigh: '#222a3d',
+  surfaceContainerHighest: '#2d3449',
+  surfaceContainerLowest: '#060e20',
+
+  // ---- Misc ----
+  outline: '#908fa0',
+  outlineVariant: '#464554',
+  inverseSurface: '#dae2fd',
+  inverseOnSurface: '#283044',
+  inversePrimary: '#494bd6',
+  surfaceTint: '#c0c1ff',
+
+  // ---- Computed helpers ----
+  glass: 'rgba(34, 42, 61, 0.70)', // Dark mode glass equivalent
+  glassBorder: 'rgba(255,255,255,0.15)',
+  glassPanel: 'rgba(255,255,255,0.03)',
+  glassPanelBorder: 'rgba(255,255,255,0.08)',
+  secondaryGlow: 'rgba(208,188,255,0.4)',
+  secondaryFaint: 'rgba(59, 130, 246, 0.08)',
+
+  // Legacy Aliases
+  purple: '#8B5CF6',
+  purpleLight: 'rgba(139, 92, 246, 0.15)',
+  bgCardAlt: '#F5F5F5',
+  textMuted: '#6B7280',
+};
+
+// Default export for non-refactored files
+export const Colors = LightColors;
 
 export const Spacing = {
   base: 8,
@@ -134,49 +191,99 @@ export const FontSize = {
   displayLg: 48,
 };
 
-export const Typography = {
+export const LightTypography = {
   displayLg: {
+    fontFamily: 'Manrope_700Bold',
     fontSize: 48,
-    fontWeight: '700' as const,
-    lineHeight: 52.8, // 48 * 1.1
-    letterSpacing: -0.96, // 48 * -0.02
+    lineHeight: 52.8,
+    letterSpacing: -0.96,
   },
   headlineLg: {
+    fontFamily: 'Manrope_600SemiBold',
     fontSize: 32,
-    fontWeight: '600' as const,
-    lineHeight: 38.4, // 32 * 1.2
-    letterSpacing: -0.32, // 32 * -0.01
+    lineHeight: 38.4,
+    letterSpacing: -0.32,
   },
   headlineLgMobile: {
+    fontFamily: 'Manrope_600SemiBold',
     fontSize: 28,
-    fontWeight: '600' as const,
-    lineHeight: 33.6, // 28 * 1.2
+    lineHeight: 33.6,
   },
   headlineSm: {
+    fontFamily: 'Manrope_600SemiBold',
     fontSize: 20,
-    fontWeight: '600' as const,
     lineHeight: 26,
     letterSpacing: -0.2,
   },
   bodyLg: {
+    fontFamily: 'Manrope_400Regular',
     fontSize: 18,
-    fontWeight: '400' as const,
-    lineHeight: 28.8, // 18 * 1.6
+    lineHeight: 28.8,
   },
   bodyMd: {
+    fontFamily: 'Manrope_400Regular',
     fontSize: 16,
-    fontWeight: '400' as const,
-    lineHeight: 25.6, // 16 * 1.6
+    lineHeight: 25.6,
   },
   bodySm: {
+    fontFamily: 'Manrope_400Regular',
     fontSize: 14,
-    fontWeight: '400' as const,
     lineHeight: 20,
   },
   labelSm: {
+    fontFamily: 'Manrope_600SemiBold',
     fontSize: 12,
-    fontWeight: '600' as const,
-    lineHeight: 12, // 12 * 1
-    letterSpacing: 0.6, // 12 * 0.05
+    lineHeight: 12,
+    letterSpacing: 0.6,
   },
 };
+
+export const DarkTypography = {
+  displayLg: {
+    fontFamily: 'HankenGrotesk_700Bold',
+    fontSize: 48,
+    lineHeight: 52.8,
+    letterSpacing: -0.96,
+  },
+  headlineLg: {
+    fontFamily: 'HankenGrotesk_600SemiBold',
+    fontSize: 32,
+    lineHeight: 38.4,
+    letterSpacing: -0.32,
+  },
+  headlineLgMobile: {
+    fontFamily: 'HankenGrotesk_600SemiBold',
+    fontSize: 28,
+    lineHeight: 33.6,
+  },
+  headlineSm: {
+    fontFamily: 'HankenGrotesk_600SemiBold',
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.2,
+  },
+  bodyLg: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 18,
+    lineHeight: 28.8,
+  },
+  bodyMd: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
+    lineHeight: 25.6,
+  },
+  bodySm: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  labelSm: {
+    fontFamily: 'JetBrainsMono_500Medium',
+    fontSize: 12,
+    lineHeight: 12,
+    letterSpacing: 0.6,
+  },
+};
+
+export type ThemeTypography = typeof LightTypography;
+export const Typography = LightTypography;

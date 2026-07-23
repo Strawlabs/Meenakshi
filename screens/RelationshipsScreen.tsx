@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -6,18 +7,21 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, FontSize } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
+import GlassCard from '../components/GlassCard';
 import { getAllContacts } from '../services/relationshipService';
 import { getFollowUps, markFollowUpDone } from '../services/followUpService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function RelationshipsScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation<NavProp>();
   const isFocused = useIsFocused();
   const [contacts, setContacts] = useState<any[]>([]);
@@ -90,19 +94,19 @@ export default function RelationshipsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
-          <ActivityIndicator size="large" color={Colors.purple} style={{ marginTop: Spacing.xl }} />
+          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: Spacing.xl }} />
         ) : (
           <>
             {/* Pending Follow-ups */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>PENDING FOLLOW-UPS</Text>
               {followUps.length === 0 ? (
-                <View style={styles.card}>
+                <GlassCard style={styles.card}>
                   <Text style={styles.emptyText}>No pending follow-ups found.</Text>
-                </View>
+                </GlassCard>
               ) : (
                 followUps.map(f => (
-                  <View key={f.id} style={styles.card}>
+                  <GlassCard key={f.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={styles.metaArea}>
                         <Text style={styles.contactName}>{f.contacts?.name || 'General Task'}</Text>
@@ -131,7 +135,7 @@ export default function RelationshipsScreen() {
                         <Text style={[styles.askBtnText, { color: '#0c9488' }]}>✓ Mark Done</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </GlassCard>
                 ))
               )}
             </View>
@@ -140,18 +144,17 @@ export default function RelationshipsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>KEY CONTACTS</Text>
               {contacts.length === 0 ? (
-                <View style={styles.card}>
+                <GlassCard style={styles.card}>
                   <Text style={styles.emptyText}>No key contacts found. Scan a business card to get started.</Text>
-                </View>
+                </GlassCard>
               ) : (
                 contacts.map(contact => {
                   const initials = contact.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
                   const color = getRandomColor(contact.id);
                   return (
-                    <TouchableOpacity
+                    <GlassCard
                       key={contact.id}
                       style={styles.card}
-                      activeOpacity={0.7}
                       onPress={() => navigation.navigate('ContactProfile', { contactId: contact.id })}
                     >
                       <View style={styles.cardHeader}>
@@ -167,7 +170,7 @@ export default function RelationshipsScreen() {
                           </View>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                    </GlassCard>
                   );
                 })
               )}
@@ -179,11 +182,10 @@ export default function RelationshipsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.background,
-  },
+    backgroundColor: Colors.background },
   glow: {
     position: 'absolute',
     bottom: -100,
@@ -191,153 +193,119 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: Colors.purple,
-    opacity: 0.03,
-  },
+    backgroundColor: Colors.primary,
+    opacity: 0.03 },
   header: {
     paddingHorizontal: Spacing.containerMobile,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
+    paddingBottom: Spacing.sm },
   headerTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   screenLabel: {
-    fontSize: 11,
+    ...typography.labelSm,
     fontWeight: '800',
-    color: Colors.purple,
+    color: Colors.primary,
     letterSpacing: 1.8,
-    marginBottom: 4,
-  },
+    marginBottom: 4 },
   screenTitle: {
-    fontSize: FontSize.headlineMobile,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-  },
+    ...typography.headlineLgMobile,
+    color: Colors.onSurface,
+    letterSpacing: -0.5 },
   screenSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
+    ...typography.bodySm,
+    color: Colors.onSurfaceVariant,
+    marginTop: 2 },
   scanBtn: {
     backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: Radius.full,
-  },
+    borderRadius: Radius.full },
   scanBtnText: {
     color: Colors.onPrimary,
     fontWeight: '700',
-    fontSize: 13,
-  },
+    fontSize: 13 },
   scrollContent: {
     paddingHorizontal: Spacing.containerMobile,
     paddingBottom: 110,
     paddingTop: Spacing.md,
-    gap: Spacing.lg,
-  },
+    gap: Spacing.lg },
   section: {
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   sectionLabel: {
-    fontSize: FontSize.labelSm,
+    ...typography.labelSm,
     fontWeight: '700',
     color: Colors.onSurfaceVariant,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    marginBottom: Spacing.xs,
-  },
+    marginBottom: Spacing.xs },
   card: {
-    backgroundColor: Colors.glass,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
     padding: Spacing.md,
     gap: Spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 2,
-  },
+    elevation: 2 },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   avatarAndInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    flex: 1,
-  },
+    flex: 1 },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   avatarText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#ffffff',
-  },
+    color: '#ffffff' },
   metaArea: {
     flex: 1,
-    gap: 2,
-  },
+    gap: 2 },
   contactName: {
-    fontSize: 15,
+    ...typography.bodyMd,
     fontWeight: '700',
-    color: Colors.textPrimary,
-  },
+    color: Colors.onSurface },
   contactTask: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
+    ...typography.bodySm,
+    color: Colors.onSurfaceVariant,
+    marginTop: 2 },
   contactDetails: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
+    ...typography.bodySm,
+    color: Colors.onSurfaceVariant },
   badge: {
-    backgroundColor: Colors.amberFaint,
+    backgroundColor: Colors.errorContainer,
     borderRadius: Radius.full,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(186, 26, 26, 0.1)',
-  },
+    paddingVertical: 4 },
   badgeText: {
-    fontSize: 11,
-    color: Colors.amber,
-    fontWeight: '700',
-  },
+    ...typography.labelSm,
+    color: Colors.onErrorContainer,
+    fontWeight: '700' },
   actionRow: {
     flexDirection: 'row',
-    marginTop: Spacing.xs,
-  },
+    marginTop: Spacing.xs },
   askBtn: {
     backgroundColor: 'rgba(107, 56, 212, 0.05)',
     borderRadius: Radius.lg,
     paddingVertical: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(107, 56, 212, 0.1)',
-  },
+    borderColor: 'rgba(107, 56, 212, 0.1)' },
   askBtnText: {
-    fontSize: 12,
-    color: Colors.purple,
-    fontWeight: '700',
-  },
+    ...typography.labelSm,
+    color: Colors.primary,
+    fontWeight: '700' },
   emptyText: {
-    fontSize: 13,
-    color: Colors.textMuted,
+    ...typography.bodySm,
+    color: Colors.onSurfaceVariant,
     textAlign: 'center',
-    paddingVertical: Spacing.sm,
-  },
-});
+    paddingVertical: Spacing.sm } });

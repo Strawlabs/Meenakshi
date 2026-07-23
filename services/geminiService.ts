@@ -21,10 +21,12 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 
 // Fallback models in priority order to recover if free quotas deplete
 const FALLBACK_MODELS = [
-  'gemini-3-flash-preview',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-flash-lite-latest'
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-latest',
+  'gemini-1.5-pro-latest',
+  'gemini-pro',
+  'gemini-1.5-flash-8b-latest'
 ];
 
 // Request queue chain to execute Gemini requests sequentially
@@ -131,7 +133,6 @@ export async function generateGeminiContent(
       try {
         console.log(`[geminiService] Attempting generateContent with model: ${currentModel}`);
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${GEMINI_API_KEY}`;
-
         const maxAttempts = 3; // Retry transient errors up to 3 times per model
         let attempt = 0;
         let delay = 2000;

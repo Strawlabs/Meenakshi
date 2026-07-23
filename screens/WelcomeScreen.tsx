@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useRef, useEffect } from 'react';
 import {
   View,
@@ -8,11 +9,12 @@ import {
   SafeAreaView,
   Easing,
   Dimensions,
-  ScrollView,
-} from 'react-native';
+  ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, FontSize, Typography } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
+import GlassCard from '../components/GlassCard';
+import AIOrb from '../components/AIOrb';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Welcome'>;
@@ -33,13 +35,15 @@ function FloatingCard({
   icon,
   label,
   pos,
-  delay,
-}: {
+  delay }: {
   icon: string;
   label: string;
   pos: object;
   delay: number;
 }) {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -50,14 +54,12 @@ function FloatingCard({
           duration: 3000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
-          delay,
-        }),
+          delay }),
         Animated.timing(floatAnim, {
           toValue: 0,
           duration: 3000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -65,18 +67,22 @@ function FloatingCard({
   return (
     <Animated.View
       style={[
-        styles.floatingCard,
         pos as any,
-        { transform: [{ translateY: floatAnim }] },
+        { transform: [{ translateY: floatAnim }], position: 'absolute', zIndex: 10 },
       ]}
     >
-      <Text style={styles.floatingIcon}>{icon}</Text>
-      <Text style={styles.floatingLabel}>{label}</Text>
+      <GlassCard style={styles.floatingCard}>
+        <Text style={styles.floatingIcon}>{icon}</Text>
+        <Text style={styles.floatingLabel}>{label}</Text>
+      </GlassCard>
     </Animated.View>
   );
 }
 
 export default function WelcomeScreen({ navigation }: Props) {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const breatheAnim = useRef(new Animated.Value(1)).current;
   const ambientGlow = useRef(new Animated.Value(0.4)).current;
 
@@ -88,14 +94,12 @@ export default function WelcomeScreen({ navigation }: Props) {
           toValue: 1.05,
           duration: 2000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
         Animated.timing(breatheAnim, {
           toValue: 1,
           duration: 2000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
       ])
     ).start();
 
@@ -106,14 +110,12 @@ export default function WelcomeScreen({ navigation }: Props) {
           toValue: 0.7,
           duration: 4000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
         Animated.timing(ambientGlow, {
           toValue: 0.4,
           duration: 4000,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+          useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -146,11 +148,7 @@ export default function WelcomeScreen({ navigation }: Props) {
           </View>
 
           {/* Central Orb */}
-          <Animated.View
-            style={[styles.centralOrb, { transform: [{ scale: breatheAnim }] }]}
-          >
-            <Text style={styles.centralOrbIcon}>✦</Text>
-          </Animated.View>
+          <AIOrb size={ORB_SIZE} />
 
           {/* Floating Data Cards */}
           {DATA_POINTS.map(dp => (
@@ -172,7 +170,7 @@ export default function WelcomeScreen({ navigation }: Props) {
 
         {/* Bento feature cards — Stitch grid */}
         <View style={styles.bentoGrid}>
-          <View style={styles.bentoCard}>
+          <GlassCard style={styles.bentoCard}>
             <View style={styles.bentoIconWrap}>
               <Text style={styles.bentoIcon}>📈</Text>
             </View>
@@ -180,8 +178,8 @@ export default function WelcomeScreen({ navigation }: Props) {
             <Text style={styles.bentoDesc}>
               Tracks every rupee, predicting goals before you set them.
             </Text>
-          </View>
-          <View style={styles.bentoCard}>
+          </GlassCard>
+          <GlassCard style={styles.bentoCard}>
             <View style={styles.bentoIconWrap}>
               <Text style={styles.bentoIcon}>🧠</Text>
             </View>
@@ -189,7 +187,7 @@ export default function WelcomeScreen({ navigation }: Props) {
             <Text style={styles.bentoDesc}>
               Retrieves information from years ago, instantly.
             </Text>
-          </View>
+          </GlassCard>
         </View>
 
         {/* CTA */}
@@ -218,11 +216,10 @@ export default function WelcomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.background,
-  },
+    backgroundColor: Colors.background },
   ambientGlow: {
     position: 'absolute',
     top: '30%',
@@ -230,27 +227,21 @@ const styles = StyleSheet.create({
     width: 400,
     height: 400,
     borderRadius: 200,
-    // Stitch: linear-gradient(135deg, #6b38d4 0%, #d0bcff 100%)
     backgroundColor: Colors.secondary,
-    // blur approximation via opacity
-    opacity: 0.07,
-  },
+    opacity: 0.15 },
   header: {
     alignItems: 'center',
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
+    paddingBottom: Spacing.sm },
   brandName: {
-    ...Typography.headlineLgMobile,
+    ...typography.headlineLgMobile,
     color: Colors.primary,
-    letterSpacing: -0.3,
-  },
+    letterSpacing: -0.3 },
   scrollContent: {
     paddingHorizontal: Spacing.containerMobile,
     paddingBottom: 80,
     alignItems: 'center',
-    gap: Spacing.lg,
-  },
+    gap: Spacing.lg },
   // === Illustration ===
   illustrationArea: {
     width: '100%',
@@ -258,15 +249,13 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-  },
+    position: 'relative' },
   linesContainer: {
     position: 'absolute',
     inset: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.3,
-  },
+    opacity: 0.3 },
   dashedRing: {
     position: 'absolute',
     width: 220,
@@ -274,34 +263,28 @@ const styles = StyleSheet.create({
     borderRadius: 110,
     borderWidth: 1,
     borderColor: Colors.secondary,
-    borderStyle: 'dashed',
-  },
+    borderStyle: 'dashed' },
   line: {
     position: 'absolute',
     width: 100,
     height: 1,
-    backgroundColor: Colors.secondary,
-  },
+    backgroundColor: Colors.secondary },
   lineTopLeft: {
     top: '35%',
     left: '15%',
-    transform: [{ rotate: '-45deg' }],
-  },
+    transform: [{ rotate: '-45deg' }] },
   lineTopRight: {
     top: '35%',
     right: '15%',
-    transform: [{ rotate: '45deg' }],
-  },
+    transform: [{ rotate: '45deg' }] },
   lineBottomLeft: {
     bottom: '35%',
     left: '15%',
-    transform: [{ rotate: '45deg' }],
-  },
+    transform: [{ rotate: '45deg' }] },
   lineBottomRight: {
     bottom: '35%',
     right: '15%',
-    transform: [{ rotate: '-45deg' }],
-  },
+    transform: [{ rotate: '-45deg' }] },
   centralOrb: {
     width: ORB_SIZE,
     height: ORB_SIZE,
@@ -314,98 +297,63 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
-    elevation: 10,
-  },
+    elevation: 10 },
   centralOrbIcon: {
     fontSize: 44,
-    color: Colors.onSecondary,
-  },
+    color: Colors.onSecondary },
   // Floating glass cards
   floatingCard: {
-    position: 'absolute',
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     alignItems: 'center',
     gap: 4,
-    zIndex: 10,
-    // shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
   },
   floatingIcon: { fontSize: 22 },
   floatingLabel: {
-    ...Typography.labelSm,
-    color: Colors.onSurfaceVariant,
-  },
+    ...typography.labelSm,
+    color: Colors.onSurfaceVariant },
   // === Hero text ===
   heroText: {
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
+    paddingHorizontal: Spacing.md },
   displayHeadline: {
-    ...Typography.displayLg,
-    fontSize: 34,
-    lineHeight: 40,
+    ...typography.displayLg,
     color: Colors.primary,
-    textAlign: 'center',
-  },
+    textAlign: 'center' },
   bodyText: {
-    ...Typography.bodyLg,
+    ...typography.bodyLg,
     color: Colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
+    textAlign: 'center' },
   // === Bento grid ===
   bentoGrid: {
     flexDirection: 'row',
     gap: Spacing.md,
-    width: '100%',
-  },
+    width: '100%' },
   bentoCard: {
     flex: 1,
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderRadius: Radius.xl,
     padding: Spacing.md,
-    gap: Spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+    gap: Spacing.sm },
   bentoIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: Colors.secondaryFixed,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   bentoIcon: { fontSize: 18 },
   bentoTitle: {
-    ...Typography.labelSm,
-    color: Colors.primary,
-  },
+    ...typography.labelSm,
+    color: Colors.primary },
   bentoDesc: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: Colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
+    lineHeight: 20 },
   // === CTA ===
   ctaSection: {
     width: '100%',
     alignItems: 'center',
-    gap: Spacing.md,
-  },
+    gap: Spacing.md },
   ctaButton: {
     width: '100%',
     height: 64,
@@ -419,23 +367,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 8,
-  },
+    elevation: 8 },
   ctaText: {
-    ...Typography.headlineLgMobile,
-    fontSize: 24,
-    color: Colors.onPrimary,
-  },
+    ...typography.headlineLgMobile,
+    color: Colors.onPrimary },
   ctaArrow: {
     fontSize: 22,
-    color: Colors.onPrimary,
-  },
+    color: Colors.onPrimary },
   securityNote: {
-    fontSize: FontSize.labelSm,
+    ...typography.labelSm,
     color: `${Colors.onSurfaceVariant}99`,
     letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
+    textTransform: 'uppercase' },
   // === Footer dots ===
   footerDots: {
     position: 'absolute',
@@ -443,14 +386,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'center',
     gap: 6,
-    opacity: 0.3,
-  },
+    opacity: 0.3 },
   dot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
-  },
+    borderRadius: 3 },
   dotActive: { backgroundColor: Colors.primary },
   dotFaint: { backgroundColor: Colors.primary, opacity: 0.4 },
-  dotFainter: { backgroundColor: Colors.primary, opacity: 0.2 },
-});
+  dotFainter: { backgroundColor: Colors.primary, opacity: 0.2 } });

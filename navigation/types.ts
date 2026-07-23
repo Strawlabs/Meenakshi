@@ -22,6 +22,7 @@ export type RootStackParamList = {
   ContactProfile: { contactId: string };
   Documents: undefined;
   DocumentDetail: { documentId: string };
+  Integrations: undefined;
 };
 
 export type TabParamList = {

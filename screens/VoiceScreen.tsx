@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 /**
  * VoiceScreen.tsx
  *
@@ -18,12 +19,11 @@ import {
   Easing,
   ScrollView,
   Platform,
-  StatusBar,
-} from 'react-native';
+  StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-import { Colors, Spacing, Radius, Typography } from '../constants/theme';
+import { Spacing, Radius } from '../constants/theme';
 import { useVoiceSession } from '../hooks/useVoiceSession';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -38,6 +38,9 @@ const QUICK_CHIPS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function VoiceScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation();
 
   // ── Voice session (all platforms) ─────────────────────────────────────────
@@ -54,8 +57,7 @@ export default function VoiceScreen() {
     forceTurnComplete,
     interrupt,
     sendText,
-    toggleMute,
-  } = session;
+    toggleMute } = session;
 
   // ── Animations ─────────────────────────────────────────────────────────────
   const orbScale = useRef(new Animated.Value(1)).current;
@@ -375,12 +377,11 @@ export default function VoiceScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.primaryContainer,
-    overflow: 'hidden',
-  },
+    overflow: 'hidden' },
   glowLeft: {
     position: 'absolute',
     top: '20%',
@@ -388,8 +389,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: Colors.secondaryFaint,
-  },
+    backgroundColor: Colors.secondaryFaint },
   glowRight: {
     position: 'absolute',
     bottom: '20%',
@@ -397,8 +397,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: Colors.glassPanelBorder,
-  },
+    backgroundColor: Colors.glassPanelBorder },
   safe: { flex: 1 },
 
   // ── Header ──────────────────────────────────────────────────────────────
@@ -408,8 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.containerMobile,
     paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
-  },
+    paddingBottom: Spacing.md },
   headerBtn: {
     width: 40,
     height: 40,
@@ -418,18 +416,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassPanelBorder,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   headerBtnText: { fontSize: 16, color: Colors.onSecondary },
   headerCenter: { alignItems: 'center', gap: 2 },
   headerTitle: {
-    ...Typography.headlineSm,
-    color: Colors.onSecondary,
-  },
+    ...typography.headlineSm,
+    color: Colors.onSecondary },
   headerStatus: {
-    ...Typography.labelSm,
-    color: Colors.onPrimaryContainer,
-  },
+    ...typography.labelSm,
+    color: Colors.onPrimaryContainer },
   headerStatusActive: { color: Colors.secondaryFixedDim },
 
   // ── Main ────────────────────────────────────────────────────────────────
@@ -438,52 +433,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.lg,
-    paddingHorizontal: Spacing.containerMobile,
-  },
+    paddingHorizontal: Spacing.containerMobile },
 
   // Transcript
   transcriptArea: {
     alignItems: 'center',
     gap: Spacing.sm,
     maxWidth: 320,
-    minHeight: 80,
-  },
+    minHeight: 80 },
   userText: {
-    ...Typography.bodySm,
+    ...typography.bodySm,
     color: Colors.onPrimaryContainer,
     fontStyle: 'italic',
-    textAlign: 'center',
-  },
+    textAlign: 'center' },
   modelText: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.onSecondary,
     textAlign: 'center',
-    lineHeight: 28,
-  },
+    lineHeight: 28 },
 
   // Orb
   orbWrap: {
     width: 200,
     height: 200,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   pingRing: {
     position: 'absolute',
     width: 220,
     height: 220,
     borderRadius: 110,
     borderWidth: 1,
-    borderColor: Colors.secondaryGlow,
-  },
+    borderColor: Colors.secondaryGlow },
   orbAura: {
     position: 'absolute',
     width: 290,
     height: 290,
     borderRadius: 145,
-    backgroundColor: Colors.secondary,
-  },
+    backgroundColor: Colors.secondary },
   orb: {
     width: 180,
     height: 180,
@@ -495,36 +483,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 28,
-    elevation: 14,
-  },
+    elevation: 14 },
   orbActive: {
     shadowOpacity: 0.85,
-    shadowRadius: 42,
-  },
+    shadowRadius: 42 },
 
   // Waveform
   waveform: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    height: 50,
-  },
+    height: 50 },
   waveBar: {
     width: 4,
     borderRadius: 2,
     backgroundColor: Colors.secondaryFixedDim,
-    opacity: 0.8,
-  },
+    opacity: 0.8 },
   waveBarCenter: {
     backgroundColor: Colors.secondary,
-    opacity: 1,
-  },
+    opacity: 1 },
 
   // ── Footer ────────────────────────────────────────────────────────────
   footer: {
     gap: Spacing.sm,
-    paddingBottom: Spacing.lg,
-  },
+    paddingBottom: Spacing.lg },
 
   // Error
   errorWrap: {
@@ -535,59 +517,50 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.errorContainer,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
+    paddingVertical: Spacing.sm },
   errorText: {
-    ...Typography.bodySm,
+    ...typography.bodySm,
     color: Colors.onErrorContainer,
-    flex: 1,
-  },
+    flex: 1 },
   errorRetry: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     backgroundColor: Colors.error,
     borderRadius: Radius.sm,
-    marginLeft: Spacing.sm,
-  },
+    marginLeft: Spacing.sm },
   errorRetryText: {
-    ...Typography.labelSm,
-    color: Colors.onError,
-  },
+    ...typography.labelSm,
+    color: Colors.onError },
 
   // Hint
   hint: {
-    ...Typography.labelSm,
+    ...typography.labelSm,
     color: Colors.onPrimaryContainer,
     textAlign: 'center',
     opacity: 0.55,
-    paddingHorizontal: Spacing.containerMobile,
-  },
+    paddingHorizontal: Spacing.containerMobile },
 
   // Chips
   chips: {
     paddingHorizontal: Spacing.containerMobile,
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     backgroundColor: Colors.glassPanel,
     borderWidth: 1,
     borderColor: Colors.glassPanelBorder,
-    borderRadius: Radius.full,
-  },
+    borderRadius: Radius.full },
   chipText: {
-    ...Typography.labelSm,
-    color: Colors.secondaryFixedDim,
-  },
+    ...typography.labelSm,
+    color: Colors.secondaryFixedDim },
 
   // Controls row
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
-  },
+    paddingHorizontal: Spacing.xl },
   sideBtn: { alignItems: 'center', gap: 5 },
   sidePill: {
     width: 50,
@@ -597,14 +570,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassPanelBorder,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   sidePillIcon: { fontSize: 20 },
   sideBtnLabel: {
-    ...Typography.labelSm,
+    ...typography.labelSm,
     color: Colors.onPrimaryContainer,
-    letterSpacing: 0.5,
-  },
+    letterSpacing: 0.5 },
 
   micBtn: {
     width: 84,
@@ -617,15 +588,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.65,
     shadowRadius: 22,
-    elevation: 12,
-  },
+    elevation: 12 },
   micBtnError: {
     backgroundColor: Colors.error,
-    shadowColor: Colors.error,
-  },
+    shadowColor: Colors.error },
   micBtnSpeaking: {
     backgroundColor: Colors.secondaryContainer,
-    shadowColor: Colors.secondaryContainer,
-  },
-  micIcon: { fontSize: 34 },
-});
+    shadowColor: Colors.secondaryContainer },
+  micIcon: { fontSize: 34 } });

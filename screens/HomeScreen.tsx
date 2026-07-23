@@ -1,3 +1,4 @@
+import { useAppTheme } from '../context/ThemeContext';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
@@ -6,13 +7,13 @@ import {
   TouchableOpacity,
   Animated,
   ScrollView,
-  Platform,
-} from 'react-native';
+  Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Colors, Spacing, Radius, FontSize } from '../constants/theme';
+import { Spacing, Radius, FontSize} from '../constants/theme';
+import GlassCard from '../components/GlassCard';
 import { SUGGESTED_PROMPTS } from '../constants/index';
 import supabase from '../lib/supabase';
 import {
@@ -21,8 +22,7 @@ import {
   markNotificationRead,
   updateNotificationPreferences,
   type AiBriefing,
-  type Notification,
-} from '../services/notificationService';
+  type Notification } from '../services/notificationService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -33,43 +33,10 @@ function getGreeting() {
   return 'Good Evening';
 }
 
-/**
- * Glass card component — Stitch .glass-card
- * background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
- * border: 1px solid rgba(255,255,255,0.5)
- */
-function GlassCard({ children, style, onPress }: any) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const onPressIn = () =>
-    Animated.timing(scale, { toValue: 0.98, duration: 80, useNativeDriver: true }).start();
-  const onPressOut = () =>
-    Animated.timing(scale, { toValue: 1, duration: 120, useNativeDriver: true }).start();
-
-  if (!onPress) {
-    return (
-      <Animated.View style={[styles.glassCard, style, { transform: [{ scale }] }]}>
-        {children}
-      </Animated.View>
-    );
-  }
-
-  return (
-    <Animated.View style={[styles.glassCard, style, { transform: [{ scale }] }]}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        activeOpacity={1}
-        style={styles.glassCardInner}
-      >
-        {children}
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
 export default function HomeScreen() {
+  const { colors: Colors, typography } = useAppTheme();
+  const styles = getStyles(Colors, typography);
+
   const navigation = useNavigation<NavProp>();
   const [briefing, setBriefing] = useState<AiBriefing | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -320,11 +287,10 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.background,
-  },
+    backgroundColor: Colors.background },
   // Stitch ambient ornaments
   ornamentTopRight: {
     position: 'absolute',
@@ -334,8 +300,7 @@ const styles = StyleSheet.create({
     height: 256,
     borderRadius: 128,
     backgroundColor: Colors.secondary,
-    opacity: 0.06,
-  },
+    opacity: 0.06 },
   ornamentMidLeft: {
     position: 'absolute',
     top: '45%',
@@ -344,8 +309,7 @@ const styles = StyleSheet.create({
     height: 320,
     borderRadius: 160,
     backgroundColor: Colors.primaryFixedDim,
-    opacity: 0.10,
-  },
+    opacity: 0.10 },
   // Top App Bar
   topBar: {
     flexDirection: 'row',
@@ -355,38 +319,30 @@ const styles = StyleSheet.create({
     height: 64,
     backgroundColor: `${Colors.surface}B3`,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
-  },
+    borderBottomColor: 'rgba(255,255,255,0.2)' },
   topBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   avatarChip: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: Colors.secondaryContainer,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   avatarChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.onSecondaryContainer,
-  },
+    ...typography.labelSm,
+    color: Colors.onSecondaryContainer },
   brandName: {
-    fontSize: FontSize.headlineMobile,
-    fontWeight: '600',
+    ...typography.headlineLgMobile,
     letterSpacing: -0.3,
-    color: Colors.primary,
-  },
+    color: Colors.primary },
   searchBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   searchBtnIcon: { fontSize: 18 },
   // Scroll
   scroll: { flex: 1 },
@@ -394,23 +350,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.containerMobile,
     paddingTop: Spacing.lg,
     paddingBottom: 120,
-    gap: Spacing.lg,
-  },
+    gap: Spacing.lg },
   // Hero
   hero: { gap: Spacing.xs },
   heroGreeting: {
-    // Stitch display-lg reduced for mobile
+    ...typography.displayLg,
     fontSize: 36,
-    fontWeight: '800',
     color: Colors.onSurface,
     letterSpacing: -0.8,
-    lineHeight: 42,
-  },
+    lineHeight: 42 },
   heroSub: {
-    fontSize: FontSize.bodyLg,
+    ...typography.bodyLg,
     color: Colors.onSurfaceVariant,
-    opacity: 0.8,
-  },
+    opacity: 0.8 },
   // Anomaly Card
   anomalyCard: {
     backgroundColor: Colors.errorContainer,
@@ -423,8 +375,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
-    elevation: 3,
-  },
+    elevation: 3 },
   anomalyIconWrap: {
     width: 40,
     height: 40,
@@ -432,120 +383,82 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
-  },
+    marginRight: Spacing.md },
   anomalyIconText: {
-    fontSize: 20,
-  },
+    fontSize: 20 },
   anomalyTextWrap: {
-    flex: 1,
-  },
+    flex: 1 },
   anomalyTitle: {
     fontSize: FontSize.bodyMd,
     fontWeight: '700',
     color: Colors.onErrorContainer,
-    marginBottom: 4,
-  },
+    marginBottom: 4 },
   anomalySub: {
-    fontSize: FontSize.labelSm,
+    ...typography.labelSm,
     color: Colors.onErrorContainer,
-    opacity: 0.8,
-  },
-  // Glass Card — Stitch
-  glassCard: {
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderRadius: Radius.xl,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  glassCardInner: {
-    padding: Spacing.lg,
-  },
+    opacity: 0.8 },
   // Section
   section: { gap: Spacing.sm },
   sectionLabel: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '700',
+    ...typography.labelSm,
     color: Colors.onSurfaceVariant,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    marginBottom: Spacing.xs,
-  },
+    marginBottom: Spacing.xs },
   // ── AI Briefing Card ───────────────────────────────────
   briefingCardInner: {
     padding: Spacing.lg,
-    gap: Spacing.md,
-  },
+    gap: Spacing.md },
   briefingHeadline: {
-    fontSize: FontSize.headlineSm,
-    fontWeight: '700',
+    ...typography.headlineSm,
     color: Colors.onSurface,
     lineHeight: 28,
-    letterSpacing: -0.2,
-  },
+    letterSpacing: -0.2 },
   briefingSection: {
-    gap: 6,
-  },
+    gap: 6 },
   briefingSectionTitle: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '700',
+    ...typography.labelSm,
     color: Colors.secondary,
     letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
+    textTransform: 'uppercase' },
   briefingItemRow: {
     flexDirection: 'row',
     gap: 6,
-    alignItems: 'flex-start',
-  },
+    alignItems: 'flex-start' },
   briefingItemBullet: {
-    fontSize: FontSize.bodySm,
+    ...typography.bodySm,
     color: Colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
+    lineHeight: 20 },
   briefingItemText: {
-    fontSize: FontSize.bodySm,
+    ...typography.bodySm,
     color: Colors.onSurfaceVariant,
     lineHeight: 20,
-    flex: 1,
-  },
+    flex: 1 },
   // ── Notification rows ──────────────────────────────────
   notifRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   priorityDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    flexShrink: 0,
-  },
+    flexShrink: 0 },
   notifContent: {
     flex: 1,
-    gap: 2,
-  },
+    gap: 2 },
   notifTitle: {
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     fontWeight: '600',
-    color: Colors.onSurface,
-  },
+    color: Colors.onSurface },
   notifBody: {
-    fontSize: FontSize.bodySm,
-    color: Colors.onSurfaceVariant,
-  },
+    ...typography.bodySm,
+    color: Colors.onSurfaceVariant },
   notifArrow: {
     fontSize: 20,
     color: Colors.outline,
-    fontWeight: '300',
-  },
+    fontWeight: '300' },
   // ── Shared brief action button ─────────────────────────
   briefBtnPrimary: {
     alignSelf: 'flex-start',
@@ -553,56 +466,45 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
-    marginTop: Spacing.xs,
-  },
+    marginTop: Spacing.xs },
   briefBtnPrimaryText: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '700',
+    ...typography.labelSm,
     color: Colors.onSecondary,
-    letterSpacing: 0.3,
-  },
+    letterSpacing: 0.3 },
   // Prompt
   promptRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.md,
-  },
+    padding: Spacing.md },
   promptText: {
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     color: Colors.onSurface,
-    flex: 1,
-  },
+    flex: 1 },
   promptArrow: {
     fontSize: 18,
     color: Colors.secondary,
-    opacity: 0.6,
-  },
+    opacity: 0.6 },
   // Tools
   toolsGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
-  },
+    gap: Spacing.md },
   toolCard: {
     flex: 1,
     padding: Spacing.md,
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   toolIconWrap: {
     width: 40,
     height: 40,
     borderRadius: Radius.full,
     backgroundColor: Colors.surfaceContainerHighest,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
+    justifyContent: 'center' },
   toolIconText: { fontSize: 18 },
   toolLabel: {
-    fontSize: FontSize.labelSm,
-    fontWeight: '600',
+    ...typography.labelSm,
     color: Colors.onSurface,
-    letterSpacing: 0.3,
-  },
+    letterSpacing: 0.3 },
   // Banner
   bannerCard: {
     borderRadius: 24,
@@ -610,19 +512,16 @@ const styles = StyleSheet.create({
     height: 140,
     backgroundColor: Colors.primaryContainer,
     position: 'relative',
-    justifyContent: 'flex-end',
-  },
+    justifyContent: 'flex-end' },
   bannerGradient: {
     position: 'absolute',
     inset: 0,
-    backgroundColor: `${Colors.primaryContainer}66`,
-  },
+    backgroundColor: `${Colors.primaryContainer}66` },
   bannerText: {
     color: 'rgba(255,255,255,0.75)',
-    fontSize: FontSize.bodyMd,
+    ...typography.bodyMd,
     padding: Spacing.md,
-    fontStyle: 'italic',
-  },
+    fontStyle: 'italic' },
   // Floating Orb — Stitch
   floatingOrb: {
     position: 'absolute',
@@ -640,8 +539,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 20,
     elevation: 12,
-    zIndex: 60,
-  },
+    zIndex: 60 },
   floatingOrbIcon: { fontSize: 28, color: '#fff' },
   floatingOrbTooltip: {
     position: 'absolute',
@@ -655,34 +553,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
-  },
+    elevation: 4 },
   floatingOrbTooltipText: {
-    fontSize: FontSize.labelSm,
+    ...typography.labelSm,
     color: Colors.onSecondaryContainer,
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-  } as any,
+    whiteSpace: 'nowrap' } as any,
   emptyBriefingContainer: {
     padding: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-  },
+    gap: Spacing.sm },
   emptyBriefingIcon: {
     fontSize: 32,
-    marginBottom: Spacing.xs,
-  },
+    marginBottom: Spacing.xs },
   emptyBriefingTitle: {
-    fontSize: 16,
+    ...typography.bodyMd,
     fontWeight: '700',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
+    color: Colors.onSurface,
+    textAlign: 'center' },
   emptyBriefingDesc: {
-    fontSize: 13,
-    color: Colors.textSecondary,
+    ...typography.bodySm,
+    color: Colors.onSurfaceVariant,
     textAlign: 'center',
-    lineHeight: 20,
-  },
-});
+    lineHeight: 20 } });
