@@ -1,5 +1,18 @@
 import { useAppTheme } from '../context/ThemeContext';
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+
+// Handle foreground notifications (displays the banner even when the app is open)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 import {
   StyleSheet,
   Text,
@@ -7,13 +20,15 @@ import {
   TouchableOpacity,
   Animated,
   ScrollView,
-  Platform } from 'react-native';
+  Platform,
+  Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Spacing, Radius, FontSize} from '../constants/theme';
 import GlassCard from '../components/GlassCard';
+import StitchIcon from '../components/StitchIcon';
 import { SUGGESTED_PROMPTS } from '../constants/index';
 import supabase from '../lib/supabase';
 import {
@@ -23,6 +38,7 @@ import {
   updateNotificationPreferences,
   type AiBriefing,
   type Notification } from '../services/notificationService';
+import { getUserDisplayName, getUserAvatarInitial } from '../services/profileService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -42,40 +58,57 @@ export default function HomeScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingBriefing, setLoadingBriefing] = useState(true);
   const [loadingNotifs, setLoadingNotifs] = useState(true);
+  const [displayName, setDisplayName] = useState('');
+  const [avatarInitial, setAvatarInitial] = useState('M');
 
   const loadData = useCallback(async () => {
+    setLoadingNotifs(true);
+    setLoadingBriefing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load briefing and notifications in parallel
-      const [latestBriefing, unreadNotifs] = await Promise.all([
+      // Load briefing, notifications, and profile in parallel
+      const [latestBriefing, unreadNotifs, name, initial] = await Promise.all([
         getLatestBriefing(user.id, 'daily'),
         getUnreadNotifications(user.id),
+        getUserDisplayName(),
+        getUserAvatarInitial(),
       ]);
 
       setBriefing(latestBriefing);
       setNotifications(unreadNotifs);
+      console.log(`[HomeScreen] Loaded ${unreadNotifs.length} notification(s)`);
+      setDisplayName(name);
+      setAvatarInitial(initial);
 
       // Register push token (no-op on simulator; works on physical device)
       try {
-        const Constants = await import('expo-constants');
-        if (Constants.default.appOwnership === 'expo') {
+        if (Constants.appOwnership === 'expo') {
           console.log('[HomeScreen] Running in Expo Go, skipping push registration');
         } else {
-          const Notifications = await import('expo-notifications').catch(() => null);
-          if (!Notifications) throw new Error('expo-notifications not installed');
           const { status } = await Notifications.requestPermissionsAsync();
 
         if (status === 'granted') {
-          const tokenData = await Notifications.getExpoPushTokenAsync();
-          if (tokenData?.data) {
-            await updateNotificationPreferences(user.id, { push_token: tokenData.data });
+          console.log('[HomeScreen] Push permissions granted, fetching token...');
+          try {
+            const tokenData = await Notifications.getExpoPushTokenAsync({
+              projectId: '74a58440-dc36-44fb-8656-fafe48f61b45', // Hardcoded to override native build cache
+            });
+            console.log('[HomeScreen] Push Token acquired:', tokenData.data);
+            if (tokenData?.data) {
+              await updateNotificationPreferences(user.id, { push_token: tokenData.data });
+              console.log('[HomeScreen] Push Token saved to Supabase successfully!');
+            }
+          } catch (tokenErr) {
+            console.error('[HomeScreen] Failed to get Expo push token:', tokenErr);
           }
+        } else {
+          console.log('[HomeScreen] Push permissions denied, status:', status);
         }
         } // Close else block
-      } catch {
-        // expo-notifications not configured or simulator — safe to skip
+      } catch (pushErr) {
+        console.error('[HomeScreen] Push notification setup error:', pushErr);
       }
     } catch (err) {
       console.error('[HomeScreen] loadData error:', err);
@@ -85,9 +118,13 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // Re-fetch every time the tab comes into focus so state stays fresh
+  // after hot reload, navigation, or first-time prefs row creation.
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const handlePrompt = (query: string, description?: string) => {
     const finalQuery = description
@@ -129,7 +166,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Settings' as any)}
             activeOpacity={0.7}
           >
-            <Text style={styles.avatarChipText}>P</Text>
+            <Text style={styles.avatarChipText}>{avatarInitial}</Text>
           </TouchableOpacity>
           <Text style={styles.brandName}>Meenakshi</Text>
         </View>
@@ -143,17 +180,19 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero — Stitch "Good Morning" section */}
+        {/* Hero — website-style editorial */}
         <View style={styles.hero}>
+          <Text style={styles.heroEyebrow}>PERSONAL INTELLIGENCE</Text>
           <Text style={styles.heroGreeting}>
-            {getGreeting()}, Prabhu.
+            {getGreeting()}{displayName ? `,\n${displayName}.` : '.'}
           </Text>
           <Text style={styles.heroSub}>I've prepared today's briefing for you.</Text>
         </View>
 
         {/* ── AI Daily Briefing Card ─────────────────────── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Today's Briefing</Text>
+          <Text style={styles.sectionEyebrow}>CONVERSATIONAL</Text>
+          <Text style={styles.sectionTitle}>Today's Briefing</Text>
           <GlassCard>
             {loadingBriefing ? (
               <View style={styles.emptyBriefingContainer}>
@@ -228,9 +267,10 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Suggested Inquiries — Stitch */}
+        {/* Suggested Inquiries */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Suggested Inquiries</Text>
+          <Text style={styles.sectionEyebrow}>SUGGESTED INQUIRIES</Text>
+          <Text style={styles.sectionTitle}>Intelligence that speaks your language</Text>
           {(SUGGESTED_PROMPTS || []).map((prompt: string, i: number) => (
             <GlassCard
               key={i}
@@ -244,19 +284,19 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Quick Tools — Stitch */}
+        {/* Quick Tools */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Tools</Text>
+          <Text style={styles.sectionEyebrow}>TOOLS</Text>
           <View style={styles.toolsGrid}>
-            <GlassCard style={styles.toolCard}>
+            <GlassCard style={styles.toolCard} onPress={() => navigation.navigate('BusinessCard' as any)}>
               <View style={styles.toolIconWrap}>
-                <Text style={styles.toolIconText}>📇</Text>
+                <StitchIcon name="contactless" size={20} color={Colors.secondary} />
               </View>
               <Text style={styles.toolLabel}>Scan Card</Text>
             </GlassCard>
             <GlassCard style={styles.toolCard} onPress={() => navigation.navigate('Documents' as any)}>
               <View style={styles.toolIconWrap}>
-                <Text style={styles.toolIconText}>📄</Text>
+                <StitchIcon name="upload-file" size={20} color={Colors.secondary} />
               </View>
               <Text style={styles.toolLabel}>Upload Document</Text>
             </GlassCard>
@@ -265,24 +305,17 @@ export default function HomeScreen() {
 
         {/* Visual signature banner */}
         <View style={styles.bannerCard}>
+          <Image 
+            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAdWyLsMRD8q_2VJBDj4nLfLwTEql4Jiakd7G_kRk7yNa-CaYJKxJFo6ItvpnCd0RgNbSetJ1MFNPay3VRdvzMit5-Lo66z-NbtPNIyYXtd_Z0Y6qFDWyfmOvZprlUWrwNlDCu_kIKGCx-fH7I1ZnREJZdYMLmqbdXyCj0LGr2fljq5aoY9KQsCrSrEChrhWTxK1lXrDO8eK0phBd7PH6iCGy1hgk_4zELls3V19UyeVKmmtBr_bgN4stIgi1rfBoy2ttRoU6Y_0xE' }} 
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
           <View style={styles.bannerGradient} />
           <Text style={styles.bannerText}>
             Intelligence is invisible, yet ever-present.
           </Text>
         </View>
       </ScrollView>
-
-      {/* Floating AI Orb — Stitch */}
-      <TouchableOpacity
-        style={styles.floatingOrb}
-        onPress={() => navigation.navigate('Voice')}
-        activeOpacity={0.85}
-      >
-        <View style={styles.floatingOrbTooltip}>
-          <Text style={styles.floatingOrbTooltipText}>Talk to Meenakshi</Text>
-        </View>
-        <Text style={styles.floatingOrbIcon}>✦</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -351,18 +384,25 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: 120,
     gap: Spacing.lg },
-  // Hero
-  hero: { gap: Spacing.xs },
+  // Hero — website editorial
+  hero: { gap: 4, paddingBottom: 4 },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2.5,
+    color: Colors.secondary,
+    marginBottom: 6 },
   heroGreeting: {
-    ...typography.displayLg,
-    fontSize: 36,
+    fontSize: 42,
+    fontWeight: '800',
     color: Colors.onSurface,
-    letterSpacing: -0.8,
-    lineHeight: 42 },
+    letterSpacing: -1.2,
+    lineHeight: 48 },
   heroSub: {
     ...typography.bodyLg,
     color: Colors.onSurfaceVariant,
-    opacity: 0.8 },
+    opacity: 0.8,
+    marginTop: 6 },
   // Anomaly Card
   anomalyCard: {
     backgroundColor: Colors.errorContainer,
@@ -397,8 +437,20 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     ...typography.labelSm,
     color: Colors.onErrorContainer,
     opacity: 0.8 },
-  // Section
+  // Section — website editorial labels
   section: { gap: Spacing.sm },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.secondary,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase' },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.onSurface,
+    letterSpacing: -0.4,
+    marginBottom: 2 },
   sectionLabel: {
     ...typography.labelSm,
     color: Colors.onSurfaceVariant,
@@ -522,42 +574,6 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     ...typography.bodyMd,
     padding: Spacing.md,
     fontStyle: 'italic' },
-  // Floating Orb — Stitch
-  floatingOrb: {
-    position: 'absolute',
-    bottom: 88,
-    right: Spacing.md,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    // Stitch: gradient from secondary to secondary-container
-    backgroundColor: Colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.secondary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
-    zIndex: 60 },
-  floatingOrbIcon: { fontSize: 28, color: '#fff' },
-  floatingOrbTooltip: {
-    position: 'absolute',
-    top: -36,
-    right: 0,
-    backgroundColor: Colors.secondaryContainer,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: Radius.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4 },
-  floatingOrbTooltipText: {
-    ...typography.labelSm,
-    color: Colors.onSecondaryContainer,
-    whiteSpace: 'nowrap' } as any,
   emptyBriefingContainer: {
     padding: Spacing.md,
     alignItems: 'center',

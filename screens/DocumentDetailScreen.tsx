@@ -6,13 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Animated,
   FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import supabase from '../lib/supabase';
 import { getDocumentById, Document, DocumentObligation, DocumentKeyDate, DocumentAction, DocumentEntity } from '../services/documentService';

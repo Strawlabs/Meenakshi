@@ -195,19 +195,19 @@ export const LightTypography = {
   displayLg: {
     fontFamily: 'Manrope_700Bold',
     fontSize: 48,
-    lineHeight: 52.8,
+    lineHeight: 53,
     letterSpacing: -0.96,
   },
   headlineLg: {
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 32,
-    lineHeight: 38.4,
+    lineHeight: 38,
     letterSpacing: -0.32,
   },
   headlineLgMobile: {
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 28,
-    lineHeight: 33.6,
+    lineHeight: 34,
   },
   headlineSm: {
     fontFamily: 'Manrope_600SemiBold',
@@ -218,12 +218,12 @@ export const LightTypography = {
   bodyLg: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 18,
-    lineHeight: 28.8,
+    lineHeight: 29,
   },
   bodyMd: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 16,
-    lineHeight: 25.6,
+    lineHeight: 26,
   },
   bodySm: {
     fontFamily: 'Manrope_400Regular',
@@ -236,25 +236,30 @@ export const LightTypography = {
     lineHeight: 12,
     letterSpacing: 0.6,
   },
+  bentoDesc: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 13,
+    lineHeight: 21, // 13 * 1.625 (leading-relaxed)
+  },
 };
 
 export const DarkTypography = {
   displayLg: {
     fontFamily: 'HankenGrotesk_700Bold',
     fontSize: 48,
-    lineHeight: 52.8,
+    lineHeight: 53,
     letterSpacing: -0.96,
   },
   headlineLg: {
     fontFamily: 'HankenGrotesk_600SemiBold',
     fontSize: 32,
-    lineHeight: 38.4,
+    lineHeight: 38,
     letterSpacing: -0.32,
   },
   headlineLgMobile: {
     fontFamily: 'HankenGrotesk_600SemiBold',
     fontSize: 28,
-    lineHeight: 33.6,
+    lineHeight: 34,
   },
   headlineSm: {
     fontFamily: 'HankenGrotesk_600SemiBold',
@@ -265,12 +270,12 @@ export const DarkTypography = {
   bodyLg: {
     fontFamily: 'Inter_400Regular',
     fontSize: 18,
-    lineHeight: 28.8,
+    lineHeight: 29,
   },
   bodyMd: {
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
-    lineHeight: 25.6,
+    lineHeight: 26,
   },
   bodySm: {
     fontFamily: 'Inter_400Regular',
@@ -282,6 +287,11 @@ export const DarkTypography = {
     fontSize: 12,
     lineHeight: 12,
     letterSpacing: 0.6,
+  },
+  bentoDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    lineHeight: 21,
   },
 };
 

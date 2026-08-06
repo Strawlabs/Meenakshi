@@ -3,9 +3,12 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { FontSize } from '../constants/theme';
+import StitchIcon from '../components/StitchIcon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
 import SplashScreen from '../screens/SplashScreen';
@@ -31,11 +34,11 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 // Stitch tab icons
 const TAB_ICONS: Record<string, { icon: string; label: string }> = {
-  Home: { icon: '⌂', label: 'Home' },
-  Memory: { icon: '📚', label: 'Memory' },
-  _Spacer: { icon: '', label: '' },
-  Finance: { icon: '💳', label: 'Wealth' },
-  Circles: { icon: '👥', label: 'Circles' } };
+  Home: { icon: 'home', label: 'Home' },
+  Memory: { icon: 'history_edu', label: 'Memory' },
+  Finance: { icon: 'account_balance_wallet', label: 'Wealth' },
+  Circles: { icon: 'group', label: 'Circles' },
+};
 
 function TabIcon({
   name,
@@ -51,11 +54,15 @@ function TabIcon({
 
   return (
     <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
-      <Text style={[styles.tabIconText, focused && styles.tabIconFocused]}>
-        {tab.icon}
-      </Text>
+      <StitchIcon 
+        name={tab.icon as any} 
+        size={24} 
+        color={focused ? Colors.secondary : `${Colors.onSurfaceVariant}99`} 
+      />
       <Text
         style={[styles.tabIconLabel, focused && styles.tabIconLabelFocused]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
       >
         {tab.label}
       </Text>
@@ -75,16 +82,36 @@ function CirclesScreen() {
   );
 }
 
-function SpacerScreen() {
+// Center Chat FAB button embedded in the tab bar
+function CenterChatButton() {
   const { colors: Colors } = useAppTheme();
   const styles = getStyles(Colors);
+  const navigation = useNavigation<any>();
 
+  return (
+    <TouchableOpacity
+      style={styles.centerTabBtn}
+      onPress={() => navigation.navigate('Chat')}
+      activeOpacity={0.85}
+    >
+      <View style={styles.centerTabOrb}>
+        <Text style={styles.centerTabOrbIcon}>✦</Text>
+      </View>
+      <Text style={styles.centerTabLabel}>AI</Text>
+    </TouchableOpacity>
+  );
+}
+
+function SpacerScreen() {
   return null;
 }
 
 function MainTabs() {
   const { colors: Colors, typography, isDark } = useAppTheme();
-  const styles = getStyles(Colors, typography);
+  const insets = useSafeAreaInsets();
+  // Ensure a minimum bottom padding of 12 for devices with gesture navigation
+  const bottomInset = Math.max(insets.bottom, 12);
+  const styles = getStyles(Colors, typography, bottomInset);
 
   return (
     <Tab.Navigator
@@ -96,8 +123,9 @@ function MainTabs() {
         tabBarInactiveTintColor: `${Colors.onSurfaceVariant}99`,
         tabBarBackground: () => (
           <BlurView 
-            intensity={20} 
-            tint={isDark ? 'dark' : 'light'} 
+            intensity={Platform.OS === 'android' ? 100 : 80}
+            tint={isDark ? 'dark' : 'light'}
+            experimentalBlurMethod="dimezisBlurView"
             style={StyleSheet.absoluteFill} 
           />
         ),
@@ -107,11 +135,11 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Memory" component={MemoryScreen} />
-      {/* Center spacer — Stitch has a floating orb in the center on home screen */}
+      {/* Center Chat FAB button */}
       <Tab.Screen
         name="_Spacer"
         component={SpacerScreen}
-        options={{ tabBarButton: () => <View style={styles.spacer} /> }}
+        options={{ tabBarButton: () => <CenterChatButton /> }}
       />
       <Tab.Screen name="Finance" component={FinanceScreen} />
       <Tab.Screen name="Circles" component={CirclesScreen} />
@@ -194,7 +222,7 @@ export default function AppNavigator() {
 
 const Radius_xl = 16;
 
-const getStyles = (Colors: any, typography?: any) => StyleSheet.create({
+const getStyles = (Colors: any, typography?: any, bottomInset: number = 0) => StyleSheet.create({
   // Stitch bottom nav:
   // bg-surface/80 backdrop-blur, border-t border-white/30
   // h-20, rounded-t-xl
@@ -202,14 +230,14 @@ const getStyles = (Colors: any, typography?: any) => StyleSheet.create({
     backgroundColor: 'transparent',
     borderTopWidth: 1,
     borderTopColor: Colors.inversePrimary || 'rgba(255,255,255,0.3)',
-    height: Platform.OS === 'ios' ? 88 : 72,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    height: 64 + bottomInset,
+    paddingBottom: bottomInset,
     paddingTop: 8,
     borderTopLeftRadius: Radius_xl,
     borderTopRightRadius: Radius_xl,
     position: 'absolute',
     elevation: 0,
-    overflow: 'hidden',
+    overflow: 'visible',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
@@ -218,7 +246,8 @@ const getStyles = (Colors: any, typography?: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    paddingHorizontal: 8,
+    minWidth: 56,
+    paddingHorizontal: 4,
     paddingVertical: 4,
     borderRadius: 20 },
   tabIconWrapActive: {
@@ -238,4 +267,33 @@ const getStyles = (Colors: any, typography?: any) => StyleSheet.create({
     marginTop: 2 },
   tabIconLabelFocused: {
     color: Colors.secondary },
-  spacer: { width: 48 } });
+  // Center Chat FAB
+  centerTabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 0,
+    gap: 3,
+    marginTop: -20 },
+  centerTabOrb: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 8 },
+  centerTabOrbIcon: {
+    fontSize: 22,
+    color: Colors.onSecondary },
+  centerTabLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.secondary,
+    letterSpacing: 0.5,
+    marginTop: 2 } });
+

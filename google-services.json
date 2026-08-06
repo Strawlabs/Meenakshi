@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "749953402571",
+    "project_id": "gen-lang-client-0765627408",
+    "storage_bucket": "gen-lang-client-0765627408.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749953402571:android:b4d698df4411bec8d6bd4e",
+        "android_client_info": {
+          "package_name": "com.kavyapy.meenakshi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "749953402571-umr6j165hak1nrcr8uqdjujahl807cur.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-7bho00qeyVPM6sh4RjjbyxeQiWNC40Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "749953402571-umr6j165hak1nrcr8uqdjujahl807cur.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "749953402571-tqmk89npo9vq00jum3h29dv25ljopt8u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kavyapy.meenakshi"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

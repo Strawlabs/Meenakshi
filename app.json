@@ -2,6 +2,7 @@
   "expo": {
     "name": "meenakshi",
     "slug": "meenakshi",
+    "owner": "kavya-p-y",
     "version": "1.0.0",
     "scheme": "meenakshi",
     "orientation": "portrait",
@@ -12,10 +13,18 @@
       "bundleIdentifier": "com.kavyapy.meenakshi",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Meenakshi to access your microphone for voice conversations.",
-        "NSCameraUsageDescription": "Allow Meenakshi to access your camera to scan business cards."
+        "NSCameraUsageDescription": "Allow Meenakshi to access your camera to scan business cards.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.749953402571-tqmk89npo9vq00jum3h29dv25ljopt8u"
+            ]
+          }
+        ]
       }
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,7 +37,25 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.INTERNET",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "com.kavyapy.meenakshi",
+              "path": "/oauthredirect"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -51,6 +78,11 @@
       ],
       "expo-font",
       "expo-splash-screen"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "74a58440-dc36-44fb-8656-fafe48f61b45"
+      }
+    }
   }
 }

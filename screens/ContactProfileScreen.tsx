@@ -1,6 +1,7 @@
 import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -139,7 +140,9 @@ export default function ContactProfileScreen() {
           <View style={styles.avatarRow}>
             <TouchableOpacity style={styles.avatar} onPress={handleEditContact}>
               <Text style={styles.avatarText}>{initials}</Text>
-              <Text style={styles.avatarEditHint}>Tap to Edit</Text>
+              <View style={styles.avatarEditBadge}>
+                <Text style={styles.avatarEditBadgeText}>✎</Text>
+              </View>
             </TouchableOpacity>
             <View style={styles.info}>
               <Text style={styles.name}>{contact.name}</Text>
@@ -245,16 +248,30 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     paddingHorizontal: Spacing.containerMobile,
     paddingVertical: Spacing.sm },
   headerBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 48, height: 48, borderRadius: 24,
     backgroundColor: Colors.surfaceContainerHigh,
     alignItems: 'center', justifyContent: 'center' },
-  headerBtnText: { ...typography.headlineMdMobile, color: Colors.onSurface, fontWeight: '300' },
+  headerBtnText: { ...typography.headlineMdMobile, fontSize: 32, color: Colors.onSurface, fontWeight: '300' },
   headerTitle: { ...typography.bodyMd, fontWeight: '700', color: Colors.onSurface },
   content: { padding: Spacing.containerMobile, gap: Spacing.xl, paddingBottom: 100 },
   card: { padding: Spacing.lg },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', position: 'relative' },
   avatarText: { ...typography.headlineSm, fontWeight: '800', color: Colors.onPrimary },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.secondary,
+    borderWidth: 2,
+    borderColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditBadgeText: { fontSize: 10, color: '#ffffff' },
   info: { flex: 1 },
   name: { ...typography.headlineSm, color: Colors.onSurface },
   role: { ...typography.bodySm, color: Colors.onSurfaceVariant },

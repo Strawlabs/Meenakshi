@@ -97,22 +97,39 @@ export async function getLatestBriefing(
 
 /**
  * Fetches unread, non-dismissed notifications for a user.
- * - Delegates to get_unread_notifications RPC for correct priority ordering (high→medium→low).
- * - Preference filtering happens inside the RPC, not in JS.
- * - If no notification_preferences row exists, returns empty array safely.
+ * Uses a direct table query (not RPC) to avoid dependency on the
+ * get_unread_notifications function which may not exist or may silently
+ * return 0 rows if notification_preferences row is missing.
  */
 export async function getUnreadNotifications(userId: string): Promise<Notification[]> {
-  const { data, error } = await supabase.rpc('get_unread_notifications', {
-    p_user_id: userId,
-  });
+  // Ensure preferences row exists — the old RPC did INNER JOIN on this table,
+  // returning 0 rows if the preferences row was missing.
+  await getNotificationPreferences(userId).catch(() => null);
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .is('read_at', null)
+    .is('dismissed_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   if (error) {
-    // If RPC errors because preferences row doesn't exist yet, return empty rather than crash
     console.error('[notificationService] getUnreadNotifications error:', error.message);
     return [];
   }
-  return (data ?? []) as Notification[];
+
+  const results = (data ?? []) as Notification[];
+  console.log(`[notificationService] Found ${results.length} unread notifications for ${userId}`);
+
+  // Sort by priority: high → medium → low
+  const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  return results.sort((a, b) =>
+    (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3)
+  );
 }
+
 
 // ────────────────────────────────────────────────────────────
 // 3. markNotificationRead

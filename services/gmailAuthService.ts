@@ -18,9 +18,29 @@ export const discovery = {
   revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
 };
 
-// Client ID configured in Google Cloud Console
-const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '';
+// Client IDs — platform-specific for native clients.
+// Google requires the iOS/Android client IDs for native OAuth (no client_secret).
+// Web client + secret is used as fallback (Expo proxy / web).
+const IOS_CLIENT_ID     = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID     || '';
+const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
+const WEB_CLIENT_ID     = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID          || '';
+const CLIENT_SECRET      = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '';
+
+import { Platform } from 'react-native';
+
+/** Returns the client ID that matches the current runtime platform. */
+export function getPlatformClientId(): string {
+  if (Platform.OS === 'ios' && IOS_CLIENT_ID) return IOS_CLIENT_ID;
+  // Android uses Web client ID via Expo auth proxy.
+  // The GCP Android client type only works with native Google Sign-In SDK.
+  return WEB_CLIENT_ID;
+}
+
+/** True only for iOS native clients (public clients — no client_secret).
+ *  Android uses Web client via proxy and needs client_secret. */
+function isNativeClient(): boolean {
+  return Platform.OS === 'ios' && !!IOS_CLIENT_ID;
+}
 
 export interface ConnectedAccount {
   id: string;
@@ -36,20 +56,23 @@ export async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
   redirectUri: string
-): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; email: string }> {
-  if (!CLIENT_ID) {
-    throw new Error('Missing EXPO_PUBLIC_GOOGLE_CLIENT_ID in environment');
+): Promise<{ accessToken: string; refreshToken: string | null; expiresIn: number; email: string; name: string; picture: string | null }> {
+  const clientId = getPlatformClientId();
+  if (!clientId) {
+    throw new Error('Missing Google Client ID in environment');
   }
 
   const params: Record<string, string> = {
-    client_id: CLIENT_ID,
+    client_id: clientId,
     code,
     code_verifier: codeVerifier,
     grant_type: 'authorization_code',
     redirect_uri: redirectUri,
   };
 
-  if (CLIENT_SECRET) {
+  // Native clients (iOS/Android) are public clients — do NOT send client_secret.
+  // Only web clients require it.
+  if (!isNativeClient() && CLIENT_SECRET) {
     params.client_secret = CLIENT_SECRET;
   }
 
@@ -77,9 +100,11 @@ export async function exchangeCodeForTokens(
 
   return {
     accessToken: access_token,
-    refreshToken: refresh_token || '',
+    refreshToken: refresh_token || null,
     expiresIn: expires_in,
     email: infoJson.email,
+    name: infoJson.name || infoJson.given_name || '',
+    picture: infoJson.picture || null,
   };
 }
 
@@ -112,7 +137,7 @@ export async function getConnectedAccount(): Promise<ConnectedAccount | null> {
 export async function saveEmailAccount(
   email: string,
   accessToken: string,
-  refreshToken: string,
+  refreshToken: string | null,
   expiresInSeconds: number
 ): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -121,18 +146,20 @@ export async function saveEmailAccount(
   const expiry = new Date();
   expiry.setSeconds(expiry.getSeconds() + expiresInSeconds);
 
+  const upsertPayload: any = {
+    user_id: user.id,
+    email,
+    access_token: accessToken,
+    token_expiry: expiry.toISOString(),
+  };
+
+  if (refreshToken) {
+    upsertPayload.refresh_token = refreshToken;
+  }
+
   const { data, error } = await supabase
     .from('email_accounts')
-    .upsert(
-      {
-        user_id: user.id,
-        email,
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_expiry: expiry.toISOString(),
-      },
-      { onConflict: 'user_id,email' }
-    )
+    .upsert(upsertPayload, { onConflict: 'user_id,email' })
     .select('id')
     .single();
 
@@ -159,17 +186,19 @@ export async function refreshAccessToken(accountId: string): Promise<string> {
 
   const { refresh_token } = data;
 
-  if (!CLIENT_ID) {
-    throw new Error('Missing EXPO_PUBLIC_GOOGLE_CLIENT_ID in environment');
+  const clientId = getPlatformClientId();
+  if (!clientId) {
+    throw new Error('Missing Google Client ID in environment');
   }
 
   const params: Record<string, string> = {
-    client_id: CLIENT_ID,
+    client_id: clientId,
     refresh_token: refresh_token,
     grant_type: 'refresh_token',
   };
 
-  if (CLIENT_SECRET) {
+  // Native clients do not send client_secret.
+  if (!isNativeClient() && CLIENT_SECRET) {
     params.client_secret = CLIENT_SECRET;
   }
 

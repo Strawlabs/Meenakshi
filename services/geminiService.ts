@@ -19,14 +19,14 @@ interface GeminiGenerateConfig {
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 
-// Fallback models in priority order to recover if free quotas deplete
+// Fallback models in priority order to recover if free quotas deplete.
+// gemini-1.5-* removed — all return 404 on v1beta API (deprecated Sept 2025).
+// gemini-2.5-flash-lite is the most quota-efficient fallback.
 const FALLBACK_MODELS = [
   'gemini-2.5-flash',
   'gemini-2.0-flash',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-pro-latest',
-  'gemini-pro',
-  'gemini-1.5-flash-8b-latest'
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash-lite',
 ];
 
 // Request queue chain to execute Gemini requests sequentially

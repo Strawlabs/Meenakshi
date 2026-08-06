@@ -7,10 +7,10 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   RefreshControl,
   Modal,
   FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Spacing, Radius } from '../constants/theme';
 import GlassCard from '../components/GlassCard';
@@ -336,15 +336,6 @@ export default function MemoryScreen() {
         onClose={() => setSelectedId(null)}
         onAskAbout={handleAskAbout}
       />
-
-      {/* FAB — new chat */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('Chat' as never)}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabText}>✦</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }

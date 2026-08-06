@@ -350,6 +350,49 @@ export async function buildMemoryContext(): Promise<string> {
 /**
  * Build the email timeline context string to inject into Gemini system prompt.
  */
+/**
+ * AA bank_transactions is a SEPARATE table from email_events (populated by
+ * Account Aggregator sync, not Gmail). FinanceScreen merges both, but chat
+ * previously only saw email_events via buildEmailContext() — meaning any
+ * transaction sourced purely from AA (like a raw bank debit/credit with no
+ * matching email) was invisible to the AI even though it was visible on the
+ * Wealth screen. This closes that gap.
+ */
+export async function buildBankTransactionContext(): Promise<string> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return '';
+
+    const { data: txns, error } = await supabase
+      .from('bank_transactions')
+      .select('transaction_timestamp, txn_type, amount, narration, masked_account_number')
+      .eq('user_id', user.id)
+      .order('transaction_timestamp', { ascending: false })
+      .limit(20);
+
+    if (error || !txns || txns.length === 0) return '';
+
+    const lines = [
+      "BANK TRANSACTIONS CONTEXT (synced via Account Aggregator, separate from email):",
+    ];
+
+    for (const txn of txns) {
+      const date = txn.transaction_timestamp
+        ? new Date(txn.transaction_timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'Unknown date';
+      const sign = txn.txn_type === 'CREDIT' ? '+' : '-';
+      const amountStr = txn.amount ? `${sign}₹${Number(txn.amount).toLocaleString('en-IN')}` : '';
+      const account = txn.masked_account_number ? `Account: ${txn.masked_account_number}` : '';
+      lines.push(`- [${date}] ${txn.txn_type || 'TXN'} ${amountStr} — ${txn.narration || 'No narration'} ${account ? `(${account})` : ''}`);
+    }
+
+    return lines.join('\n');
+  } catch (err) {
+    console.error('Error building bank transaction context:', err);
+    return '';
+  }
+}
+
 export async function buildEmailContext(): Promise<string> {
   try {
     const { data: { user } } = await supabase.auth.getUser();

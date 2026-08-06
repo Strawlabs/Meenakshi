@@ -51,3 +51,5 @@ supabase/.branches/
 
 # Expo build cache
 .expo/
+gen-lang-client-*firebase-adminsdk*.json
+*firebase-adminsdk*.json

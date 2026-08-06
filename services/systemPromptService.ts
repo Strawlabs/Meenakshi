@@ -1,5 +1,5 @@
 import { MEENAKSHI_SYSTEM_PROMPT } from '../constants';
-import { buildMemoryContext, buildEmailContext } from './memoryService';
+import { buildMemoryContext, buildEmailContext, buildBankTransactionContext } from './memoryService';
 import { getLatestSnapshot } from './financialHealthService';
 import { getAllContacts } from './relationshipService';
 import { getFollowUps } from './followUpService';
@@ -29,6 +29,9 @@ export async function buildSystemPrompt(forceRefresh = false): Promise<string> {
 
   const emailCtx = await buildEmailContext().catch(() => '');
   if (emailCtx) prompt += `\n\n${emailCtx}`;
+
+  const bankCtx = await buildBankTransactionContext().catch(() => '');
+  if (bankCtx) prompt += `\n\n${bankCtx}`;
 
   // Financial health snapshot + relationship context — run in parallel
   try {

@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
-  Platform
+  Platform,
+  Modal,
+  TextInput
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Spacing, Radius } from '../constants/theme';
@@ -21,7 +23,10 @@ import * as WebBrowser from 'expo-web-browser';
 import * as DocumentPicker from 'expo-document-picker';
 import supabase from '../lib/supabase';
 import { discovery, exchangeCodeForTokens, saveEmailAccount } from '../services/gmailAuthService';
+// googleSignInService is Android-only — required lazily inside handleGoogleConnectAndroid
 import { uploadCreditReport, parseCreditReport } from '../services/creditReportService';
+
+
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
@@ -87,6 +92,10 @@ export default function OnboardingScreen({ navigation }: Props) {
   });
   
   const [loading, setLoading] = useState(false);
+  
+  const [phonePromptVisible, setPhonePromptVisible] = useState(false);
+  const [phonePromptResolve, setPhonePromptResolve] = useState<((val: string | null) => void) | null>(null);
+  const [phoneInput, setPhoneInput] = useState('');
 
   const loadStatuses = async () => {
     try {
@@ -115,14 +124,25 @@ export default function OnboardingScreen({ navigation }: Props) {
     loadStatuses();
   }, []);
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'meenakshi' });
+  // iOS-only expo-auth-session config.
+  // Android uses @react-native-google-signin/google-signin (native Play Services).
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID     || '';
+
+  const redirectUri = React.useMemo(() => {
+    if (Platform.OS === 'ios' && iosClientId) {
+      const idWithoutSuffix = iosClientId.replace('.apps.googleusercontent.com', '');
+      return `com.googleusercontent.apps.${idWithoutSuffix}:/`;
+    }
+    return AuthSession.makeRedirectUri({ scheme: 'meenakshi' });
+  }, [iosClientId]);
 
   const baseConfig = {
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+    clientId: Platform.OS === 'ios' ? iosClientId : webClientId,
     redirectUri,
     responseType: AuthSession.ResponseType.Code,
     extraParams: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' } };
+
 
   const [gmailReq, gmailRes, gmailPrompt] = AuthSession.useAuthRequest({
     ...baseConfig,
@@ -166,23 +186,7 @@ export default function OnboardingScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const tokens = await exchangeCodeForTokens(code, codeVerifier, redirectUri);
-      await saveEmailAccount(tokens.email, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
-      
-      import('../lib/supabase').then(async (m) => {
-        const { data: { user } } = await m.default.auth.getUser();
-        if (user && integrationId) {
-          await m.default.from('integration_consents').upsert({
-            user_id: user.id,
-            integration: integrationId,
-            status: 'connected',
-            connected_at: new Date().toISOString() }, { onConflict: 'user_id,integration' });
-          await loadStatuses();
-          retrySync(integrationId).then(() => {
-            loadStatuses();
-          });
-        }
-      });
-      Alert.alert('Success', `${integrationId} connected and syncing in background.`);
+      await finishGoogleConnect(tokens, integrationId);
     } catch (err: any) {
       console.error('OAuth exchange error:', err);
       Alert.alert('Connection Failed', err.message);
@@ -190,6 +194,54 @@ export default function OnboardingScreen({ navigation }: Props) {
       setLoading(false);
     }
   };
+
+  /** Android-only: native Google Play Services sign-in. */
+  const handleGoogleConnectAndroid = async (integrationId: string) => {
+    // Lazy require so RNGoogleSignin native module is never loaded on iOS
+    const { signInWithGoogleAndroid, statusCodes } =
+      require('../services/googleSignInService') as typeof import('../services/googleSignInService');
+    const meta = INTEGRATIONS.find(m => m.id === integrationId);
+    const scopes = [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      ...((meta as any)?.scopes || []),
+    ];
+    setLoading(true);
+    try {
+      const tokens = await signInWithGoogleAndroid(scopes);
+      await finishGoogleConnect(tokens, integrationId);
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // silent
+      } else {
+        console.error('[Android] Google Sign-In error:', err);
+        Alert.alert('Connection Failed', err.message || 'Google Sign-In failed');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  /** Shared post-auth logic for both iOS and Android. */
+  const finishGoogleConnect = async (tokens: { accessToken: string; refreshToken: string | null; expiresIn: number; email: string; name?: string; picture?: string | null }, integrationId: string) => {
+    await saveEmailAccount(tokens.email, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
+    import('../lib/supabase').then(async (m) => {
+      const { data: { user } } = await m.default.auth.getUser();
+      if (user && integrationId) {
+        await m.default.from('integration_consents').upsert({
+          user_id: user.id,
+          integration: integrationId,
+          status: 'connected',
+          connected_at: new Date().toISOString() }, { onConflict: 'user_id,integration' });
+        await loadStatuses();
+        retrySync(integrationId).then(() => loadStatuses());
+      }
+    });
+    Alert.alert('Success', `${integrationId} connected and syncing in background.`);
+  };
+
+
 
   const toggle = async (id: string) => {
     const isConnected = enabled[id];
@@ -217,13 +269,17 @@ export default function OnboardingScreen({ navigation }: Props) {
         ]);
       }
     } else {
-      if (id === 'gmail') {
-        gmailPrompt();
-      } else if (id === 'calendar') {
-        calPrompt();
-      } else if (id === 'contacts') {
-        contactsPrompt();
+      const googleIds = ['gmail', 'calendar', 'contacts'];
+      if (googleIds.includes(id)) {
+        if (Platform.OS === 'android') {
+          await handleGoogleConnectAndroid(id);
+          return;
+        }
+        if (id === 'gmail')     gmailPrompt();
+        else if (id === 'calendar')  calPrompt();
+        else if (id === 'contacts')  contactsPrompt();
       } else if (id === 'bank_account') {
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           Alert.alert("Error", "Not logged in");
@@ -233,25 +289,13 @@ export default function OnboardingScreen({ navigation }: Props) {
         let mobileNumber = user.phone || user.user_metadata?.phone;
 
         if (!mobileNumber) {
-          if (Platform.OS === 'ios') {
-            mobileNumber = await new Promise<string | null>((resolve) => {
-              Alert.prompt(
-                "Mobile Number Required",
-                "Please enter your 10-digit mobile number for Setu Account Aggregator linking.",
-                [
-                  { text: "Cancel", style: "cancel", onPress: () => resolve(null) },
-                  { text: "Continue", onPress: (text?: string) => resolve(text || null) }
-                ],
-                "plain-text",
-                "",
-                "phone-pad"
-              );
-            });
-          } else if (Platform.OS === 'web') {
+          if (Platform.OS === 'web') {
             mobileNumber = window.prompt("Please enter your 10-digit mobile number for Setu Account Aggregator linking:");
           } else {
-            Alert.alert("Error", "Please update your profile with a mobile number to continue.");
-            return;
+            mobileNumber = await new Promise<string | null>((resolve) => {
+              setPhonePromptResolve(() => resolve);
+              setPhonePromptVisible(true);
+            });
           }
         }
 

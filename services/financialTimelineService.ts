@@ -175,11 +175,18 @@ export async function getFinancialEvents(categoryFilter = 'all'): Promise<Timeli
   return merged.slice(0, 100);
 }
 
+const FINANCIAL_CATEGORIES = [
+  'salary', 'emi', 'credit_card', 'insurance', 'tax',
+  'investment', 'loan', 'bill', 'renewal', 'notice', 'approval', 'bank_transaction',
+];
+
 export async function getFinancialTimeline(userId: string, limit: number = 50) {
   const { data, error } = await supabase
     .from('email_events')
     .select('*')
     .eq('user_id', userId)
+    .eq('is_duplicate', false)
+    .in('category', FINANCIAL_CATEGORIES)
     .order('received_at', { ascending: false })
     .limit(limit);
 
@@ -198,7 +205,7 @@ export async function getFinancialTimeline(userId: string, limit: number = 50) {
 
   return Object.keys(grouped).map(month => ({
     month,
-    events: grouped[month]
+    events: grouped[month],
   }));
 }
 

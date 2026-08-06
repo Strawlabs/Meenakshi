@@ -7,22 +7,30 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
-  Platform } from 'react-native';
+  Platform,
+  Image,
+  Modal,
+  TextInput
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Spacing, Radius} from '../constants/theme';
 import GlassCard from '../components/GlassCard';
+import StitchIcon from '../components/StitchIcon';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as DocumentPicker from 'expo-document-picker';
 import supabase from '../lib/supabase';
 import { discovery, exchangeCodeForTokens, saveEmailAccount } from '../services/gmailAuthService';
+// googleSignInService is Android-only — required lazily inside handleGoogleConnectAndroid
 import { getIntegrationStatuses, retrySync, revokeIntegration, IntegrationConsent } from '../services/integrationService';
 import { uploadCreditReport, parseCreditReport } from '../services/creditReportService';
+
 
 const INTEGRATIONS_META = [
   { id: 'gmail', icon: '✉️', label: 'Gmail', scopes: ['https://www.googleapis.com/auth/gmail.readonly'] },
@@ -42,6 +50,10 @@ export default function IntegrationsScreen() {
   const [loading, setLoading] = useState(true);
   const [statuses, setStatuses] = useState<Record<string, IntegrationConsent>>({});
   const [currentRequestingId, setCurrentRequestingId] = useState<string | null>(null);
+
+  const [phonePromptVisible, setPhonePromptVisible] = useState(false);
+  const [phonePromptResolve, setPhonePromptResolve] = useState<((val: string | null) => void) | null>(null);
+  const [phoneInput, setPhoneInput] = useState('');
 
   useEffect(() => {
     loadStatuses();
@@ -68,15 +80,26 @@ export default function IntegrationsScreen() {
     }
   };
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'meenakshi' });
-  console.log('OAuth Redirect URI generated:', redirectUri);
+  // ─── iOS-only OAuth config (expo-auth-session) ────────────────────────
+  // Android uses @react-native-google-signin/google-signin (native Play Services)
+  // which bypasses all web OAuth redirect URI restrictions entirely.
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID     || '';
+
+  const redirectUri = React.useMemo(() => {
+    if (Platform.OS === 'ios' && iosClientId) {
+      const idWithoutSuffix = iosClientId.replace('.apps.googleusercontent.com', '');
+      return `com.googleusercontent.apps.${idWithoutSuffix}:/`;
+    }
+    return AuthSession.makeRedirectUri({ scheme: 'meenakshi' });
+  }, [iosClientId]);
 
   const baseConfig = {
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+    clientId: Platform.OS === 'ios' ? iosClientId : webClientId,
     redirectUri,
     responseType: AuthSession.ResponseType.Code,
     extraParams: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' } };
+
 
   const [gmailReq, gmailRes, gmailPrompt] = AuthSession.useAuthRequest({
     ...baseConfig,
@@ -122,26 +145,7 @@ export default function IntegrationsScreen() {
     setLoading(true);
     try {
       const tokens = await exchangeCodeForTokens(code, codeVerifier, redirectUri);
-      await saveEmailAccount(tokens.email, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
-      
-      // Update integration consent to connected
-      import('../lib/supabase').then(async (m) => {
-        const { data: { user } } = await m.default.auth.getUser();
-        if (user && integrationId) {
-          await m.default.from('integration_consents').upsert({
-            user_id: user.id,
-            integration: integrationId,
-            status: 'connected',
-            connected_at: new Date().toISOString() }, { onConflict: 'user_id,integration' });
-          await loadStatuses();
-          
-          // Trigger the initial sync in the background
-          retrySync(integrationId).then(() => {
-            loadStatuses(); // Refresh UI after sync completes
-          });
-        }
-      });
-      Alert.alert('Success', `${integrationId} connected and syncing in background.`);
+      await finishGoogleConnect(tokens, integrationId);
     } catch (err: any) {
       console.error('OAuth exchange error:', err);
       Alert.alert('Connection Failed', err.message);
@@ -150,6 +154,70 @@ export default function IntegrationsScreen() {
       setCurrentRequestingId(null);
     }
   };
+
+  /** Android-only: trigger native Google Sign-In via Play Services. */
+  const handleGoogleConnectAndroid = async (integrationId: string) => {
+    // Lazy require so RNGoogleSignin native module is never loaded on iOS
+    const { signInWithGoogleAndroid, statusCodes } =
+      require('../services/googleSignInService') as typeof import('../services/googleSignInService');
+    const meta = INTEGRATIONS_META.find(m => m.id === integrationId);
+    const scopes = [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      ...(meta?.scopes || []),
+    ];
+    setCurrentRequestingId(integrationId);
+    setLoading(true);
+    try {
+      const tokens = await signInWithGoogleAndroid(scopes);
+      await finishGoogleConnect(tokens, integrationId);
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled — silent
+      } else {
+        console.error('[Android] Google Sign-In error:', err);
+        Alert.alert('Connection Failed', err.message || 'Google Sign-In failed');
+      }
+    } finally {
+      setLoading(false);
+      setCurrentRequestingId(null);
+    }
+  };
+
+
+  /** Shared post-auth logic for both iOS and Android. */
+  const finishGoogleConnect = async (tokens: { accessToken: string; refreshToken: string | null; expiresIn: number; email: string; name?: string; picture?: string | null }, integrationId: string) => {
+    await saveEmailAccount(tokens.email, tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
+
+    // Persist name + picture into Supabase auth metadata if not already set
+    if (tokens.name || tokens.picture) {
+      import('../lib/supabase').then(async (m) => {
+        const { data: { user } } = await m.default.auth.getUser();
+        const meta = user?.user_metadata ?? {};
+        const updates: Record<string, string> = {};
+        if (tokens.name && !meta.display_name && !meta.full_name) updates.full_name = tokens.name;
+        if (tokens.picture && !meta.avatar_url) updates.avatar_url = tokens.picture;
+        if (Object.keys(updates).length > 0) await m.default.auth.updateUser({ data: updates });
+      }).catch(() => { /* non-blocking */ });
+    }
+
+    // Update integration consent to connected
+    import('../lib/supabase').then(async (m) => {
+      const { data: { user } } = await m.default.auth.getUser();
+      if (user && integrationId) {
+        await m.default.from('integration_consents').upsert({
+          user_id: user.id,
+          integration: integrationId,
+          status: 'connected',
+          connected_at: new Date().toISOString() }, { onConflict: 'user_id,integration' });
+        await loadStatuses();
+        retrySync(integrationId).then(() => loadStatuses());
+      }
+    });
+    Alert.alert('Success', `${integrationId} connected and syncing in background.`);
+  };
+
+
 
   const handleToggle = async (id: string, isConnected: boolean) => {
     if (isConnected) {
@@ -171,16 +239,26 @@ export default function IntegrationsScreen() {
         ]);
       }
     } else {
-      if (id === 'gmail') {
-        setCurrentRequestingId('gmail');
-        gmailPrompt();
-      } else if (id === 'calendar') {
-        setCurrentRequestingId('calendar');
-        calPrompt();
-      } else if (id === 'contacts') {
-        setCurrentRequestingId('contacts');
-        contactsPrompt();
+      const googleIntegrations = ['gmail', 'calendar', 'contacts'];
+      if (googleIntegrations.includes(id)) {
+        if (Platform.OS === 'android') {
+          // Android: native Google Play Services sign-in (no redirect URI restrictions)
+          await handleGoogleConnectAndroid(id);
+          return;
+        }
+        // iOS: expo-auth-session with native iOS client
+        if (id === 'gmail') {
+          setCurrentRequestingId('gmail');
+          gmailPrompt();
+        } else if (id === 'calendar') {
+          setCurrentRequestingId('calendar');
+          calPrompt();
+        } else if (id === 'contacts') {
+          setCurrentRequestingId('contacts');
+          contactsPrompt();
+        }
       } else if (id === 'bank_account') {
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           Alert.alert("Error", "Not logged in");
@@ -190,25 +268,13 @@ export default function IntegrationsScreen() {
         let mobileNumber = user.phone || user.user_metadata?.phone;
 
         if (!mobileNumber) {
-          if (Platform.OS === 'ios') {
-            mobileNumber = await new Promise<string | null>((resolve) => {
-              Alert.prompt(
-                "Mobile Number Required",
-                "Please enter your 10-digit mobile number for Setu Account Aggregator linking.",
-                [
-                  { text: "Cancel", style: "cancel", onPress: () => resolve(null) },
-                  { text: "Continue", onPress: (text?: string) => resolve(text || null) }
-                ],
-                "plain-text",
-                "",
-                "phone-pad"
-              );
-            });
-          } else if (Platform.OS === 'web') {
+          if (Platform.OS === 'web') {
             mobileNumber = window.prompt("Please enter your 10-digit mobile number for Setu Account Aggregator linking:");
           } else {
-            Alert.alert("Error", "Please update your profile with a mobile number to continue.");
-            return;
+            mobileNumber = await new Promise<string | null>((resolve) => {
+              setPhonePromptResolve(() => resolve);
+              setPhonePromptVisible(true);
+            });
           }
         }
 
@@ -341,83 +407,195 @@ export default function IntegrationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.screenTitle}>Integrations Hub</Text>
-      </View>
-
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={Colors.secondary} />
+    <View style={styles.root}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[Colors.background, Colors.surfaceContainer, Colors.background]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <View style={styles.backBtnCircle}>
+              <StitchIcon name="arrow_back" size={20} color={Colors.primary} />
+            </View>
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
         </View>
-      )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {INTEGRATIONS_META.map(item => {
-          const statusObj = statuses[item.id];
-          const isConnected = statusObj?.status === 'connected' || statusObj?.status === 'error';
-          const isError = statusObj?.status === 'error';
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.screenTitle}>Integrations Hub</Text>
+          <Text style={styles.screenSubtitle}>Manage and sync your data across platforms</Text>
+        </View>
 
-          return (
-            <GlassCard key={item.id} style={styles.card}>
-              <View style={styles.integrationRow}>
-                <Text style={styles.integrationIcon}>{item.icon}</Text>
-                <View style={styles.integrationText}>
-                  <Text style={styles.integrationLabel}>{item.label}</Text>
-                  {isConnected && statusObj?.last_synced_at && (
-                    <Text style={styles.integrationStatus}>
-                      Last synced: {new Date(statusObj.last_synced_at).toLocaleString()}
-                    </Text>
-                  )}
-                  {isError && (
-                    <Text style={styles.errorText}>
-                      Error: {statusObj?.last_sync_error}
-                    </Text>
-                  )}
-                  {!isConnected && (
-                    <Text style={styles.integrationStatus}>Not connected</Text>
-                  )}
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+
+          {INTEGRATIONS_META.map(item => {
+            const statusObj = statuses[item.id];
+            const isConnected = statusObj?.status === 'connected' || statusObj?.status === 'error';
+            const isError = statusObj?.status === 'error';
+
+            return (
+              <GlassCard key={item.id} borderRadius={16} style={styles.card}>
+                <View style={styles.integrationRow}>
+                  <View style={styles.iconSquare}>
+                    {['document_vault', 'business_card', 'bank_account', 'credit_report'].includes(item.id) ? (
+                      <StitchIcon 
+                        name={item.id === 'document_vault' ? 'folder' : item.id === 'business_card' ? 'badge' : item.id === 'bank_account' ? 'account_balance' : 'bar_chart'} 
+                        size={24} color={Colors.primary} />
+                    ) : (
+                      <Text style={styles.integrationIcon}>{item.icon}</Text>
+                    )}
+                  </View>
+                  
+                  <View style={styles.integrationText}>
+                    <Text style={styles.integrationLabel}>{item.label}</Text>
+                    {isConnected && statusObj?.last_synced_at && (
+                      <Text style={styles.integrationStatus}>
+                        Last synced: {new Date(statusObj.last_synced_at).toLocaleString()}
+                      </Text>
+                    )}
+                    {isError && (
+                      <Text style={styles.errorText}>
+                        Error: {statusObj?.last_sync_error}
+                      </Text>
+                    )}
+                    {!isConnected && (
+                      <Text style={styles.integrationStatus}>
+                        {item.id === 'gmail' ? 'Sync emails and attachments' 
+                         : item.id === 'calendar' ? 'Sync calendar events'
+                         : item.id === 'contacts' ? 'Sync your contacts'
+                         : item.id === 'document_vault' ? 'Secure storage for your documents'
+                         : item.id === 'business_card' ? 'Scan and manage business cards'
+                         : item.id === 'bank_account' ? 'Connect and monitor your accounts'
+                         : item.id === 'credit_report' ? 'Track and monitor your credit health'
+                         : 'Sync your data'}
+                      </Text>
+                    )}
+                  </View>
+                  <Switch
+                    value={isConnected}
+                    onValueChange={() => handleToggle(item.id, isConnected)}
+                    trackColor={{ false: Colors.surfaceContainerHigh, true: Colors.primary }}
+                    thumbColor={'#ffffff'}
+                    ios_backgroundColor={Colors.surfaceContainerHigh}
+                    style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+                  />
                 </View>
-                <Switch
-                  value={isConnected}
-                  onValueChange={() => handleToggle(item.id, isConnected)}
-                  trackColor={{ false: Colors.surfaceContainerHigh, true: Colors.secondary }}
-                  thumbColor={isConnected ? Colors.secondaryContainer : Colors.outline}
-                  ios_backgroundColor={Colors.surfaceContainerHigh}
+                {isError && (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity style={styles.retryBtn} onPress={() => handleRetry(item.id)}>
+                      <Text style={styles.retryBtnText}>Retry Sync</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </GlassCard>
+            );
+          })}
+        </ScrollView>
+
+        {phonePromptVisible && (
+          <Modal visible transparent animationType="fade">
+            <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'}}>
+              <View style={{backgroundColor: Colors.surface, padding: Spacing.lg, borderRadius: Radius.md, width: '85%'}}>
+                <Text style={{color: Colors.onSurface, fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.sm}}>Mobile Number Required</Text>
+                <Text style={{color: Colors.onSurfaceVariant, marginBottom: Spacing.md}}>Please enter your 10-digit mobile number for Setu linking.</Text>
+                <TextInput
+                  style={{backgroundColor: Colors.background, color: Colors.onSurface, padding: Spacing.md, borderRadius: Radius.sm, marginBottom: Spacing.lg}}
+                  keyboardType="phone-pad"
+                  placeholder="Enter mobile number"
+                  placeholderTextColor={Colors.onSurfaceVariant}
+                  value={phoneInput}
+                  onChangeText={setPhoneInput}
                 />
-              </View>
-              {isError && (
-                <View style={styles.actionRow}>
-                  <TouchableOpacity style={styles.retryBtn} onPress={() => handleRetry(item.id)}>
-                    <Text style={styles.retryBtnText}>Retry Sync</Text>
+                <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.md}}>
+                  <TouchableOpacity onPress={() => { setPhonePromptVisible(false); phonePromptResolve?.(null); setPhoneInput(''); }}>
+                    <Text style={{color: Colors.onSurfaceVariant, fontSize: 16}}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setPhonePromptVisible(false); phonePromptResolve?.(phoneInput); setPhoneInput(''); }}>
+                    <Text style={{color: Colors.primary, fontSize: 16, fontWeight: 'bold'}}>Continue</Text>
                   </TouchableOpacity>
                 </View>
-              )}
-            </GlassCard>
-          );
-        })}
-      </ScrollView>
-    </SafeAreaView>
+              </View>
+            </View>
+          </Modal>
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 
 const getStyles = (Colors: any, typography: any) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md },
-  backBtn: { marginBottom: 8 },
-  backText: { ...typography.bodyMd, color: Colors.onSurfaceVariant },
-  screenTitle: { ...typography.headlineLgMobile, color: Colors.onSurface },
+  root: { flex: 1, backgroundColor: Colors.background },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  backBtn: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backBtnCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  backText: { ...typography.bodyLg, color: Colors.onSurfaceVariant },
+  headerTextContainer: {
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    gap: 4,
+  },
+  screenTitle: { ...typography.displaySm, color: Colors.onSurface, fontWeight: '700' },
+  screenSubtitle: { ...typography.bodyMd, color: Colors.onSurfaceVariant },
   scrollContent: { paddingHorizontal: Spacing.lg, paddingBottom: 100, gap: Spacing.md },
+  
+
+
   card: {
-    padding: Spacing.md },
+    padding: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
   integrationRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  integrationIcon: { fontSize: 28, width: 40, textAlign: 'center' },
-  integrationText: { flex: 1, gap: 4 },
-  integrationLabel: { ...typography.bodyMd, fontWeight: '600', color: Colors.onSurface },
-  integrationStatus: { ...typography.labelSm, color: Colors.outline },
+  iconSquare: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  integrationIcon: { fontSize: 24, textAlign: 'center' },
+  integrationText: { flex: 1, gap: 2 },
+  integrationLabel: { ...typography.bodyLg, fontWeight: '600', color: Colors.onSurface },
+  integrationStatus: { ...typography.bodySm, color: Colors.onSurfaceVariant },
   errorText: { ...typography.labelSm, color: Colors.error },
   actionRow: { marginTop: Spacing.md, alignItems: 'flex-end' },
   retryBtn: {
@@ -429,4 +607,6 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
   loadingOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(10, 15, 29, 0.6)',
-    justifyContent: 'center', alignItems: 'center', zIndex: 999 } });
+    justifyContent: 'center', alignItems: 'center', zIndex: 999 
+  } 
+});

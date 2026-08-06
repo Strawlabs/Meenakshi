@@ -9,9 +9,9 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
@@ -28,6 +28,8 @@ import { detectFollowUps } from '../services/followUpService';
 import { saveBusinessCard } from '../services/businessCardService';
 import { getLatestSnapshot } from '../services/financialHealthService';
 import { getDocumentById, getUserDocuments, Document, uploadDocument, processDocument } from '../services/documentService';
+import { getUpcomingObligations } from '../services/financialTimelineService';
+import { getFollowUps } from '../services/followUpService';
 import supabase from '../lib/supabase';
 
 // ⚠️ Set EXPO_PUBLIC_GEMINI_API_KEY in .env
@@ -42,12 +44,47 @@ interface Message {
   timestamp: number;
 }
 
-const QUICK_PROMPTS = [
-  'What bills are due this week?',
+// Fallback prompts shown only if the person has no obligations/follow-ups yet
+// (new account, nothing synced) — never mixed with real data, so the person
+// never sees a stale hardcoded prompt sitting next to real ones.
+const FALLBACK_PROMPTS = [
+  'What can you help me with?',
+  'Connect my Gmail to get started',
   'Summarize my finances',
-  'Who should I follow up with?',
-  'What did we discuss last time?',
 ];
+
+async function generateSuggestedPrompts(): Promise<string[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return FALLBACK_PROMPTS;
+
+    const [obligations, followUps] = await Promise.all([
+      getUpcomingObligations(user.id).catch(() => []),
+      getFollowUps().catch(() => []),
+    ]);
+
+    const prompts: string[] = [];
+
+    if (Array.isArray(obligations) && obligations.length > 0) {
+      const next = obligations[0];
+      const label = next.subject || (next.category ? next.category.replace(/_/g, ' ') : 'this payment');
+      prompts.push(`Tell me about my upcoming ${label}`);
+    }
+
+    const pendingFollowUps = (followUps || []).filter((f: any) => f.status === 'pending');
+    if (pendingFollowUps.length > 0) {
+      prompts.push('Who should I follow up with?');
+    }
+
+    prompts.push('Summarize my finances');
+    prompts.push('What did we discuss last time?');
+
+    // De-dupe, cap at 4 so it never overflows the row
+    return Array.from(new Set(prompts)).slice(0, 4);
+  } catch {
+    return FALLBACK_PROMPTS;
+  }
+}
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -72,6 +109,7 @@ export default function ChatScreen() {
   const [memoryLoaded, setMemoryLoaded] = useState(false);
   const [scannedCardBase64, setScannedCardBase64] = useState<string | null>(null);
   const [activeDocumentId, setActiveDocumentId] = useState<string | undefined>(route.params?.documentId);
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(FALLBACK_PROMPTS);
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -99,6 +137,11 @@ export default function ChatScreen() {
     (async () => {
       setMemoryLoaded(true); // mark ready even if context is empty
     })();
+  }, []);
+
+  // Load real suggested prompts (replaces the old hardcoded QUICK_PROMPTS)
+  useEffect(() => {
+    generateSuggestedPrompts().then(setQuickPrompts);
   }, []);
 
   // Fire initial query if provided (from HomeScreen suggestion)
@@ -390,7 +433,7 @@ You are Meenakshi. The user has uploaded a business card image and is providing 
         {/* Quick prompts — only show on fresh chat */}
         {messages.length === 1 && (
           <View style={styles.quickPrompts}>
-            {QUICK_PROMPTS.map((p, i) => (
+            {quickPrompts.map((p, i) => (
               <TouchableOpacity
                 key={i}
                 style={styles.quickChip}
@@ -518,13 +561,13 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.2)' },
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.surfaceContainerHigh },
-  headerBtnText: { fontSize: 24, color: Colors.onSurface, fontWeight: '300' },
+  headerBtnText: { fontSize: 32, color: Colors.onSurface, fontWeight: '300' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   headerOrb: {
     width: 36,

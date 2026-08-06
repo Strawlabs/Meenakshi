@@ -214,9 +214,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           turnTimingRef.current.userSpeechEndTs = Date.now();
         }
         
-        // Log first few frames to see what's happening
+        // Diagnostic log: InputFormat shows what expo-audio delivered (raw ArrayBuffer or base64 string).
+        // Regardless of InputFormat, we ALWAYS send base64 b64 over the wire — see line below.
         if (Math.random() < 0.05) {
-          console.log(`[AudioStream] Sending chunk. IsBase64=${isBase64}, byteLength=${byteLen}, rms=${rms.toFixed(3)}`);
+          console.log(`[AudioStream] Sending chunk. InputFormat=${isBase64 ? 'base64' : 'rawBuffer'} → WireSentAsBase64=true, byteLength=${bytes.byteLength}, rms=${rms.toFixed(3)}`);
         }
         
         turnTimingRef.current.lastChunkSentTs = Date.now();
@@ -272,6 +273,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   const turnCompletePendingRef = useRef(false);
   const sessionActiveRef = useRef(false);
   const sessionInterruptTokenRef = useRef(0);
+  // Set to true in stopSession() BEFORE ws.close() so onclose can skip auto-reconnect
+  const intentionalCloseRef = useRef(false);
+
   const turnTimingRef = useRef<{
     userSpeechEndTs: number | null;
     firstAudioByteTs: number | null;
@@ -404,6 +408,9 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
   // ── Shared: stop session ───────────────────────────────────────────────────
 
   const stopSession = useCallback(() => {
+    // Signal intentional close BEFORE ws.close() so onclose skips auto-reconnect
+    intentionalCloseRef.current = true;
+
     // Cancel pending retries
     if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
@@ -433,6 +440,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
     setError(null);
     setAudioLevel(0);
   }, [cleanupWeb, cleanupNative, persistTurn, setVoiceStateSync]);
+
   // ── Manual Stream End ("Stop and answer now" override) ────────────────────
   //
   // With automaticActivityDetection enabled, Gemini ends turns on its own
@@ -842,11 +850,13 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
       sessionActiveRef.current = true; // Gate: allow playNextFromQueue to run
       sessionTurnCountRef.current = 0; // Reset cold-start counter for new session
       latencyLogRef.current = [];      // Reset rolling average for new session
+      intentionalCloseRef.current = false; // Clear any prior intentional-stop flag
       setError(null);
       setVoiceStateSync('connecting');
       setUserTranscript('');
       setAiTranscript('');
       setAudioLevel(0);
+
 
       const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
       if (!apiKey) throw new Error('API key missing — set EXPO_PUBLIC_GEMINI_API_KEY in .env');
@@ -902,7 +912,10 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
             model: `models/${modelName}`,
             generationConfig: {
               responseModalities: ['AUDIO'],
-              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_NAME } } },
+              speechConfig: { 
+                languageCode: 'en-IN',
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_NAME } } 
+              },
             },
             systemInstruction: { parts: [{ text: systemPrompt }] },
             // Gemini detects end-of-speech automatically after ~1 s of silence.
@@ -1155,6 +1168,13 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
         wsRef.current = null;
         if (Platform.OS === 'web') cleanupWeb(); else cleanupNative();
 
+        // If stopSession() set this flag, skip reconnect — this was an intentional close.
+        if (intentionalCloseRef.current) {
+          intentionalCloseRef.current = false;
+          setVoiceStateSync('idle');
+          return;
+        }
+
         const closedFast = Date.now() - openedAt < INSTANT_CLOSE_MS;
         if (closedFast && !setupCompleteRef.current && modelIndexRef.current < LIVE_MODELS.length - 1) {
           console.warn(`[useVoiceSession] ${modelName} closed instantly with no data — trying next model`);
@@ -1178,6 +1198,7 @@ export function useVoiceSession(_deprecated?: any): VoiceSessionState {
           setVoiceStateSync('idle');
         }
       };
+
 
       // Connection timeout guard (10s)
       connectTimeout = setTimeout(() => {

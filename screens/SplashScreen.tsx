@@ -5,223 +5,238 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Easing,
-  Dimensions } from 'react-native';
+  Dimensions,
+  Easing
+} from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Spacing } from '../constants/theme';
+import Svg, { Rect, RadialGradient, Defs, Stop, Path, Circle, LinearGradient } from 'react-native-svg';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Splash'>;
 };
 
-const { width, height } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SplashScreen({ navigation }: Props) {
-  const { colors: Colors, typography } = useAppTheme();
-  const styles = getStyles(Colors, typography);
-
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowScale = useRef(new Animated.Value(1)).current;
+  const { typography } = useAppTheme();
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const contentFade = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Staggered fade in
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true }),
-      Animated.timing(contentFade, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true }),
-    ]).start();
+    // Fade in the entire screen content
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
 
-    // Breathing orb — matches Stitch @keyframes breath
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true }),
-      ])
-    ).start();
+    // Animate the progress bar over 1.2s
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width animation requires native driver false
+    }).start();
 
-    // Ambient pulse glow
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowScale, {
-          toValue: 1.4,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true }),
-        Animated.timing(glowScale, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true }),
-      ])
-    ).start();
-
-    // Silent authentication of test developer account
+    // Silent authentication
     const { ensureAuthenticatedSession } = require('../services/authHelper');
     ensureAuthenticatedSession().catch((err: any) => console.error('[Splash] Auth failed:', err));
 
-    const timer = setTimeout(() => navigation.replace('Welcome'), 100);
+    // Bounce animation for chevron
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, { toValue: 6, duration: 1000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Navigate to Welcome screen after extended duration (1.6s)
+    const timer = setTimeout(() => {
+      navigation.replace('Welcome');
+    }, 1600);
+    
     return () => clearTimeout(timer);
   }, []);
 
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '60%'],
+  });
+
   return (
-    // Stitch: bg = radial-gradient(circle at center, #6b38d4 0%, #131b2e 100%)
     <View style={styles.container}>
-      {/* Radial gradient layers (RN approximation) */}
-      <View style={styles.radialOuter} />
-      <View style={styles.radialMid} />
-      <View style={styles.radialInner} />
+      {/* Background: Full-screen radial gradient */}
+      <View style={StyleSheet.absoluteFill}>
+        <Svg width="100%" height="100%">
+          <Defs>
+            <RadialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
+              {/* Dark violet-navy center to near-black edges */}
+              <Stop offset="0%" stopColor="#4c2f8f" />
+              <Stop offset="100%" stopColor="#0d0a1a" />
+            </RadialGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#bgGrad)" />
+        </Svg>
+      </View>
 
-      {/* Ambient breathing pulse — Stitch .ai-pulse */}
-      <Animated.View
-        style={[
-          styles.ambientPulse,
-          { transform: [{ scale: glowScale }], opacity: glowScale.interpolate({ inputRange: [1, 1.4], outputRange: [0.4, 0.8] }) },
-        ]}
-      />
-
-      {/* Glass container — Stitch .glass-container */}
-      <Animated.View style={[styles.glassContainer, { opacity: fadeAnim }]}>
-        {/* Orb */}
-        <Animated.View style={[styles.orbWrap, { transform: [{ scale: pulseAnim }] }]}>
-          {/* Outer glow ring */}
-          <View style={styles.orbGlowRing} />
-          {/* Main orb — gradient from secondary to secondary-fixed */}
-          <View style={styles.orb}>
-            <Text style={styles.orbIcon}>✦</Text>
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        
+        {/* Glass Card */}
+        <View style={styles.glassCard}>
+          
+          {/* Custom SVG Badge Icon */}
+          <View style={styles.iconContainer}>
+            <Svg width="120" height="120" viewBox="0 0 120 120">
+              <Defs>
+                <LinearGradient id="badgeGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0%" stopColor="#4b7bfc" />
+                  <Stop offset="100%" stopColor="#8b5cf6" />
+                </LinearGradient>
+              </Defs>
+              
+              {/* The M Outline Frame */}
+              <Path 
+                d="M 30,100 L 30,45 C 30,35 35,30 42,30 L 45,30 L 60,52 L 75,30 L 78,30 C 85,30 90,35 90,45 L 90,100" 
+                stroke="url(#badgeGrad)" 
+                strokeWidth="7" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                fill="none" 
+              />
+              
+              {/* Person Head */}
+              <Circle cx="60" cy="65" r="9" stroke="url(#badgeGrad)" strokeWidth="7" fill="none" />
+              
+              {/* Person Shoulders */}
+              <Path 
+                d="M 44,100 A 16 16 0 0 1 76,100" 
+                stroke="url(#badgeGrad)" 
+                strokeWidth="7" 
+                strokeLinecap="round" 
+                fill="none" 
+              />
+            </Svg>
           </View>
-        </Animated.View>
 
-        {/* Text content */}
-        <Animated.View style={[styles.textBlock, { opacity: contentFade }]}>
-          <Text style={styles.brandName}>Meenakshi</Text>
+          {/* Typography */}
+          <Text style={styles.headline}>Meenakshi</Text>
           <Text style={styles.tagline}>
-            Ambient intelligence that evolves with you.{'\n'}Your narrative, protected.
+            Your AI Memory & Financial{'\n'}Companion
           </Text>
-        </Animated.View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressTrack}>
+            <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+          </View>
+
+          {/* Trust Row */}
+          <View style={styles.trustRow}>
+            {/* SVG Lock Icon */}
+            <Svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Rect x="5" y="11" width="14" height="11" rx="2" ry="2" />
+              <Path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </Svg>
+            <Text style={styles.trustText}>END-TO-END ENCRYPTED</Text>
+          </View>
+        </View>
+
       </Animated.View>
 
-      {/* Footer */}
-      <Animated.Text style={[styles.footer, { opacity: contentFade }]}>
-        By Straw Labs
-      </Animated.Text>
+      {/* Footer Section with Bouncing Chevron */}
+      <Animated.View style={[styles.footerContainer, { opacity: fadeAnim }]}>
+        <Animated.View style={{ transform: [{ translateY: bounceAnim }], marginBottom: 16 }}>
+          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M6 9l6 6 6-6" />
+          </Svg>
+        </Animated.View>
+        <Text style={styles.footerText}>
+          INTELLIGENT SERENITY
+        </Text>
+      </Animated.View>
     </View>
   );
 }
 
-const getStyles = (Colors: any, typography: any) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primaryContainer,
+    backgroundColor: '#0d0a1a', // Fallback color
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden' },
-  // Layered circles to approximate radial-gradient(#6b38d4 → #131b2e)
-  radialOuter: {
-    position: 'absolute',
-    width: width * 1.6,
-    height: width * 1.6,
-    borderRadius: width * 0.8,
-    backgroundColor: Colors.primaryContainer },
-  radialMid: {
-    position: 'absolute',
-    width: width,
-    height: width,
-    borderRadius: width / 2,
-    backgroundColor: Colors.secondaryContainer,
-    opacity: 0.7 },
-  radialInner: {
-    position: 'absolute',
-    width: width * 0.5,
-    height: width * 0.5,
-    borderRadius: width * 0.25,
-    backgroundColor: Colors.secondary,
-    opacity: 0.3,
-    top: height * 0.28 },
-  // Stitch .ai-pulse
-  ambientPulse: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(132, 85, 239, 0.3)' },
-  // Stitch .glass-container
-  glassContainer: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  content: {
+    width: '100%',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  glassCard: {
+    width: '85%',
+    maxWidth: 400,
+    backgroundColor: 'rgba(255,255,255,0.07)', // ~7% white
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255,255,255,0.15)',
     borderRadius: 32,
-    paddingHorizontal: 48,
     paddingVertical: 48,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    gap: Spacing.lg,
-    maxWidth: 360,
-    width: '88%' },
-  // Orb wrap for breathing transform
-  orbWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm },
-  // Outer glow ring
-  orbGlowRing: {
-    position: 'absolute',
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: Colors.secondary,
-    opacity: 0.25,
-    // shadow = 0 0 40px rgba(107,56,212,0.4)
-    shadowColor: Colors.secondary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 12 },
-  orb: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    // gradient: from secondary (#6b38d4) to secondary-container (#8455ef)
-    backgroundColor: Colors.secondary,
+  },
+  iconContainer: {
+    marginBottom: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.secondary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 10 },
-  orbIcon: {
-    fontSize: 36,
-    color: Colors.onSecondary },
-  textBlock: {
-    alignItems: 'center',
-    gap: Spacing.sm },
-  brandName: {
-    ...typography.headlineLgMobile,
-    color: Colors.primaryFixed,
-    letterSpacing: -0.5 },
-  tagline: {
-    ...typography.bodyMd,
-    color: Colors.primaryFixedDim,
+  },
+  headline: {
+    fontFamily: 'Manrope_700Bold', // Bold weight
+    fontSize: 32,
+    color: '#ffffff',
     textAlign: 'center',
-    maxWidth: 240 },
-  footer: {
+    marginBottom: 16,
+  },
+  tagline: {
+    fontFamily: 'Inter_400Regular', // Regular weight
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)', // light lavender-gray approximation
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  progressTrack: {
+    width: '70%',
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#8b5cf6', // Solid bright violet
+    borderRadius: 2,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  trustText: {
+    fontFamily: 'JetBrainsMono_500Medium',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1.5,
+  },
+  footerContainer: {
     position: 'absolute',
     bottom: 40,
-    ...typography.labelSm,
-    color: `${Colors.primaryFixedDim}99`,
-    textTransform: 'uppercase' } });
+    alignItems: 'center',
+  },
+  footerText: {
+    fontFamily: 'JetBrainsMono_500Medium',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+});

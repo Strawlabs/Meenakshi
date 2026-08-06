@@ -1,6 +1,7 @@
 import { useAppTheme } from '../context/ThemeContext';
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, Image, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -299,10 +300,10 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     paddingHorizontal: Spacing.containerMobile,
     paddingVertical: Spacing.sm },
   headerBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 48, height: 48, borderRadius: 24,
     backgroundColor: Colors.surfaceContainerHigh,
     alignItems: 'center', justifyContent: 'center' },
-  headerBtnText: { ...typography.headlineMdMobile, color: Colors.onSurface, fontWeight: '300' },
+  headerBtnText: { ...typography.headlineMdMobile, fontSize: 32, color: Colors.onSurface, fontWeight: '300' },
   headerTitle: { ...typography.bodyMd, fontWeight: '700', color: Colors.onSurface },
   permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
   permissionText: { ...typography.bodyMd, color: Colors.onSurface, textAlign: 'center', marginBottom: Spacing.lg },

@@ -46,6 +46,8 @@ export async function generateFinancialHealthSnapshot(userId: string) {
 
   const prompt = `Based on these financial events for the last 90 days, generate: 1) a health_score from 0-100 based on cash flow, obligations, and anomalies, 2) a 2-sentence summary of the user financial situation, 3) up to 3 specific actionable recommendations as an array of strings, 4) list upcoming obligations as array of {description, due_date, amount}. Return as JSON only with keys: health_score, summary, recommendations, upcoming_obligations.
 
+IMPORTANT: All amounts are in Indian Rupees. Always use the ₹ symbol (never $ or USD) when mentioning money in the summary, recommendations, or descriptions.
+
 Context:
 ${context}`;
 

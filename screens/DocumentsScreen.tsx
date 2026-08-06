@@ -6,10 +6,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
@@ -380,16 +380,19 @@ const getStyles = (Colors: any, typography: any) => StyleSheet.create({
     paddingVertical: Spacing.xs },
   filterChip: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: Radius.full,
     backgroundColor: Colors.surfaceContainerHigh,
     borderWidth: 1,
-    borderColor: Colors.outlineVariant },
+    borderColor: Colors.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center' },
   filterChipActive: {
     backgroundColor: Colors.secondary,
     borderColor: Colors.secondary },
   filterChipText: {
     ...typography.labelSm,
+    lineHeight: 16,
     color: Colors.onSurface },
   filterChipTextActive: {
     color: Colors.onSecondary },
